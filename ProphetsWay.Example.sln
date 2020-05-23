@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "ProphetsWay.Example.Database", "ProphetsWay.Example.Database\ProphetsWay.Example.Database.sqlproj", "{828E118D-68BA-4F92-8794-46CBF85AC4C3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProphetsWay.Example.DataAccess", "ProphetsWay.Example.DataAccess\ProphetsWay.Example.DataAccess.csproj", "{617F9BB3-7A4E-4A12-936D-DC4C7785DB86}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{828E118D-68BA-4F92-8794-46CBF85AC4C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{828E118D-68BA-4F92-8794-46CBF85AC4C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{828E118D-68BA-4F92-8794-46CBF85AC4C3}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{828E118D-68BA-4F92-8794-46CBF85AC4C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{828E118D-68BA-4F92-8794-46CBF85AC4C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{828E118D-68BA-4F92-8794-46CBF85AC4C3}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{617F9BB3-7A4E-4A12-936D-DC4C7785DB86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{617F9BB3-7A4E-4A12-936D-DC4C7785DB86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{617F9BB3-7A4E-4A12-936D-DC4C7785DB86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{617F9BB3-7A4E-4A12-936D-DC4C7785DB86}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5EE48541-9A56-4FC6-BD4A-1A761E4C76A3}
+	EndGlobalSection
+EndGlobal
