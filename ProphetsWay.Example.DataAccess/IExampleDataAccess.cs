@@ -3,7 +3,7 @@ using ProphetsWay.Example.DataAccess.IDaos;
 
 namespace ProphetsWay.Example.DataAccess
 {
-	public interface IExDataAccess : IBaseDataAccess<int>, ICompanyDao, IJobDao, IUserDao
+	public interface IExampleDataAccess : IBaseDataAccess<int>, ICompanyDao, IJobDao, IUserDao
 	{
 		//this is just your interface of all interfaces
 		//so long as any DAL implementation uses this interface as it's main input and you're defined entities in this project
