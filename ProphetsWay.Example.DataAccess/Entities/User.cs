@@ -1,12 +1,9 @@
-﻿using ProphetsWay.BaseDataAccess;
-using ProphetsWay.Example.DataAccess.Enums;
+﻿using ProphetsWay.Example.DataAccess.Enums;
 
 namespace ProphetsWay.Example.DataAccess.Entities
 {
-	public class User : IBaseEntity
+	public class User : BaseEntity
 	{
-		public int Id { get; set; }
-
 		public string Name { get; set; }
 
 		public Company Company { get; set; }
