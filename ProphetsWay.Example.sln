@@ -7,9 +7,16 @@ Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "ProphetsWay.Example.Databas
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProphetsWay.Example.DataAccess", "ProphetsWay.Example.DataAccess\ProphetsWay.Example.DataAccess.csproj", "{617F9BB3-7A4E-4A12-936D-DC4C7785DB86}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProphetsWay.Example.Tests", "ProphetsWay.Example.Tests\ProphetsWay.Example.Tests.csproj", "{74B4025B-57D5-4BEA-9523-4C782ED4D711}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProphetsWay.Example.Tests", "ProphetsWay.Example.Tests\ProphetsWay.Example.Tests.csproj", "{74B4025B-57D5-4BEA-9523-4C782ED4D711}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProphetsWay.Example.DataAccess.NoDB", "ProphetsWay.Example.DataAccess.NoDB\ProphetsWay.Example.DataAccess.NoDB.csproj", "{A0CDB36A-24C6-4895-991B-3ABB707A9C59}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProphetsWay.Example.DataAccess.NoDB", "ProphetsWay.Example.DataAccess.NoDB\ProphetsWay.Example.DataAccess.NoDB.csproj", "{A0CDB36A-24C6-4895-991B-3ABB707A9C59}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{085F4B6B-6BB2-4D76-AA3C-456A842F8BD3}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
