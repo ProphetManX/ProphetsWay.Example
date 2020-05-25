@@ -1,11 +1,10 @@
 # ProphetsWay.Example
 | Release   | Status |
 |   ---     |  ---   |
-| Latest Build: | [![Build status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/BaseDataAccess/BaseDataAccess%20CI)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=7)
-| Alpha:    | [![Build status](https://vsrm.dev.azure.com/ProphetsWay/_apis/public/Release/badge/dadb23ce-840b-4b7d-9783-dc5e9a2d9029/4/5)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_release?definitionId=4)
-| Beta:     | [![Build status](https://vsrm.dev.azure.com/ProphetsWay/_apis/public/Release/badge/dadb23ce-840b-4b7d-9783-dc5e9a2d9029/4/8)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_release?definitionId=4)
-| Release:  | [![Build status](https://vsrm.dev.azure.com/ProphetsWay/_apis/public/Release/badge/dadb23ce-840b-4b7d-9783-dc5e9a2d9029/4/9)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_release?definitionId=4)
-
+| Latest Build: | [![Build status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/Example%20CI)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=15)
+| Alpha:    | [![Build status](https://vsrm.dev.azure.com/ProphetsWay/_apis/public/Release/badge/dadb23ce-840b-4b7d-9783-dc5e9a2d9029/8/18)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_release?definitionId=8)
+| Beta:     | [![Build status](https://vsrm.dev.azure.com/ProphetsWay/_apis/public/Release/badge/dadb23ce-840b-4b7d-9783-dc5e9a2d9029/8/19)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_release?definitionId=8)
+| Release:  | [![Build status](https://vsrm.dev.azure.com/ProphetsWay/_apis/public/Release/badge/dadb23ce-840b-4b7d-9783-dc5e9a2d9029/8/20)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_release?definitionId=8)
 
 
 ProphetsWay.Example is a repository that consists of the following projects:
@@ -57,12 +56,6 @@ to execute the tests, but each DAO Test file can be overridden with ANY class th
 that tinker with this Example project can build their own implementation using any backend of their choice, and so long as they implement 
 ```IExampleDataAccess``` you can use these unit tests to test your own implementation.
 
-
-## Getting Started
-
-BaseDataAccess is a lightweight project that consists of mostly just interfaces, but it also has a base abstract class you can utilize for 
-convenience within your project.  This base class does use Reflection to work some magic, and if you're concerned about speed, you can override 
-those virtual methods and manually evaluate them (or not use the base abstract class and just implement the interface on your own).
 
 ### Prerequisites
 If you wish to implement your own version of ProphetsWay.Example then I would recommend pulling down a copy of [ProphetsWay.BaseDataAccess](https://github.com/ProphetManX/ProphetsWay.BaseDataAccess)
