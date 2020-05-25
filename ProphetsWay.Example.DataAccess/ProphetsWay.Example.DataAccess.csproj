@@ -1,11 +1,36 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net40;net45;net451;net452;net46;net461;net471;netstandard2.0;netstandard2.1;netcoreapp2.2;netcoreapp2.1;netcoreapp2.0;netcoreapp3.0;netcoreapp3.1</TargetFrameworks>
+	  
+	  
+		<!-- Assembly Override Properties -->
+		<PackageRequireLicenseAcceptance />
+		<PackageId />
+		<Version />
+		<Authors />
+		<Company />
+		<Product />
 
-  <ItemGroup>
-    <PackageReference Include="ProphetsWay.BaseDataAccess" Version="1.1.0-126.Beta" />
-  </ItemGroup>
+		<Copyright />
+		<PackageLicenseUrl />
+		<PackageProjectUrl />
+		<PackageIconUrl />
+		<RepositoryUrl />
+		<RepositoryType />
+		<PackageTags />
+		<PackageReleaseNotes />
+		<NeutralLanguage />
+		<AssemblyVersion />
+		<FileVersion />
+		<InformationalVersion />
 
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ProphetsWay.BaseDataAccess" Version="1.1.0-126.Beta" />
+	</ItemGroup>
+
+
+	
 </Project>
