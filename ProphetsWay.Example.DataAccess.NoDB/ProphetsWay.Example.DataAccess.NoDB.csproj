@@ -2,8 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFrameworks>net40;net45;net451;net452;net46;net461;net471;netstandard2.0;netstandard2.1;netcoreapp2.2;netcoreapp2.1;netcoreapp2.0;netcoreapp3.0;netcoreapp3.1;</TargetFrameworks>
-	  
-	  
+
 		<!-- Assembly Override Properties -->
 		<PackageRequireLicenseAcceptance />
 		<PackageId />
@@ -28,9 +27,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ProphetsWay.BaseDataAccess" Version="1.1.0-126.Beta" />
+		<ProjectReference Include="..\ProphetsWay.Example.DataAccess\ProphetsWay.Example.DataAccess.csproj" />
 	</ItemGroup>
 
-
-	
 </Project>
