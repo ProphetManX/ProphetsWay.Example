@@ -3,21 +3,16 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using ProphetsWay.Example.DataAccess;
-using ProphetsWay.Example.DataAccess.NoDB;
 using ProphetsWay.Example.DataAccess.Entities;
 using FluentAssertions;
+using ProphetsWay.Example.DataAccess.IDaos;
+using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	public class JobDaoTests
+	public class JobDaoTests : BaseUnitTests<IJobDao>
 	{
-		IExampleDataAccess _da;
-
-		public JobDaoTests(IExampleDataAccess da = null)
-		{
-			//single instantiation of the data access class, makes for easy changing to test a separate implementation
-			_da = da ?? new ExampleDataAccess();
-		}
+		protected override IJobDao GetIExampleDataAccess => new ExampleDataAccess();
 
 		[Fact]
 		public void ShouldInsertJob()
@@ -33,7 +28,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		public delegate void GetAssertion(Job co);
-		public static (int JobId, GetAssertion Assertion) SetupShouldGetUser(IExampleDataAccess da)
+		public static (int JobId, GetAssertion Assertion) SetupShouldGetUser(IJobDao da)
 		{
 			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
 			da.Insert(co);
@@ -107,7 +102,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		public delegate void Assertion(IList<Job> all);
-		public static Assertion SetupShouldGetAllJobs(IExampleDataAccess da)
+		public static Assertion SetupShouldGetAllJobs(IJobDao da)
 		{
 			var co = new Job { Name = $"Eric {Guid.NewGuid()}" };
 			da.Insert(co);

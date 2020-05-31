@@ -3,21 +3,16 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using ProphetsWay.Example.DataAccess;
-using ProphetsWay.Example.DataAccess.NoDB;
 using ProphetsWay.Example.DataAccess.Entities;
 using FluentAssertions;
+using ProphetsWay.Example.DataAccess.IDaos;
+using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	public class CompanyDaoTests
+	public class CompanyDaoTests : BaseUnitTests<ICompanyDao>
 	{
-		IExampleDataAccess _da;
-
-		public CompanyDaoTests(IExampleDataAccess da = null)
-		{
-			//single instantiation of the data access class, makes for easy changing to test a separate implementation
-			_da = da ?? new ExampleDataAccess();
-		}
+		protected override ICompanyDao GetIExampleDataAccess => new ExampleDataAccess();
 
 		[Fact]
 		public void ShouldInsertCompany()
@@ -33,7 +28,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		public delegate void GetAssertion(Company co);
-		public static (int CompanyId, GetAssertion Assertion) SetupShouldGetCompany(IExampleDataAccess da)
+		public static (int CompanyId, GetAssertion Assertion) SetupShouldGetCompany(ICompanyDao da)
 		{
 			var co = new Company { Name = $"Bob {Guid.NewGuid()}" };
 			da.Insert(co);
@@ -94,7 +89,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		public delegate void CountAssertion(int count);
-		public static CountAssertion SetupShouldGetCount(IExampleDataAccess da)
+		public static CountAssertion SetupShouldGetCount(ICompanyDao da)
 		{
 			var co = new Company { Name = $"Bob {Guid.NewGuid()}" };
 			da.Insert(co);
@@ -123,7 +118,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		public delegate void PagedAssertion(int count, IList<Company> all, IList<Company> subset);
-		public static PagedAssertion SetupShouldGetPagedView(IExampleDataAccess da)
+		public static PagedAssertion SetupShouldGetPagedView(ICompanyDao da)
 		{
 			var co = new Company { Name = $"Bob {Guid.NewGuid()}" };
 			da.Insert(co);
