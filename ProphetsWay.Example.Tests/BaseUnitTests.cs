@@ -3,15 +3,15 @@ using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	public abstract class BaseUnitTests
+	public abstract class BaseUnitTests<T>
 	{
-		protected IExampleDataAccess _da;
+		protected T _da;
 
 		public BaseUnitTests()
 		{
 			_da = GetIExampleDataAccess;
 		}
 
-		protected virtual IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();
+		protected abstract T GetIExampleDataAccess { get; }
 	}
 }

@@ -5,11 +5,15 @@ using System;
 using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
 using FluentAssertions;
+using ProphetsWay.Example.DataAccess.IDaos;
+using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	public class JobDaoTests : BaseUnitTests
+	public class JobDaoTests : BaseUnitTests<IJobDao>
 	{
+		protected override IJobDao GetIExampleDataAccess => new ExampleDataAccess();
+
 		[Fact]
 		public void ShouldInsertJob()
 		{
@@ -24,7 +28,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		public delegate void GetAssertion(Job co);
-		public static (int JobId, GetAssertion Assertion) SetupShouldGetUser(IExampleDataAccess da)
+		public static (int JobId, GetAssertion Assertion) SetupShouldGetUser(IJobDao da)
 		{
 			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
 			da.Insert(co);
@@ -98,7 +102,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		public delegate void Assertion(IList<Job> all);
-		public static Assertion SetupShouldGetAllJobs(IExampleDataAccess da)
+		public static Assertion SetupShouldGetAllJobs(IJobDao da)
 		{
 			var co = new Job { Name = $"Eric {Guid.NewGuid()}" };
 			da.Insert(co);

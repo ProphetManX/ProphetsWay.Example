@@ -1,10 +1,14 @@
+using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
+using ProphetsWay.Example.DataAccess.NoDB;
 using Xunit;
 
 namespace ProphetsWay.Example.Tests
 {
-	public class BaseDataAccessTests : BaseUnitTests
+	public class BaseDataAccessTests : BaseUnitTests<IExampleDataAccess>
 	{
+		protected override IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();
+
 		[Fact]
 		public void ShouldGetGenericTypes()
 		{

@@ -3,11 +3,15 @@ using System;
 using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
 using FluentAssertions;
+using ProphetsWay.Example.DataAccess.IDaos;
+using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	public class UserDaoTests : BaseUnitTests
+	public class UserDaoTests : BaseUnitTests<IUserDao>
 	{
+		protected override IUserDao GetIExampleDataAccess => new ExampleDataAccess();
+
 		[Fact]
 		public void ShouldInsertUser()
 		{
@@ -22,7 +26,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		public delegate void GetAssertion(User co);
-		public static (int UserId, GetAssertion Assertion) SetupShouldGetUser(IExampleDataAccess da)
+		public static (int UserId, GetAssertion Assertion) SetupShouldGetUser(IUserDao da)
 		{
 			var co = new User { Name = $"Bob {Guid.NewGuid()}" };
 			da.Insert(co);
