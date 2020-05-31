@@ -3,22 +3,13 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using ProphetsWay.Example.DataAccess;
-using ProphetsWay.Example.DataAccess.NoDB;
 using ProphetsWay.Example.DataAccess.Entities;
 using FluentAssertions;
 
 namespace ProphetsWay.Example.Tests
 {
-	public class JobDaoTests
+	public class JobDaoTests : BaseUnitTests
 	{
-		IExampleDataAccess _da;
-
-		public JobDaoTests(IExampleDataAccess da = null)
-		{
-			//single instantiation of the data access class, makes for easy changing to test a separate implementation
-			_da = da ?? new ExampleDataAccess();
-		}
-
 		[Fact]
 		public void ShouldInsertJob()
 		{

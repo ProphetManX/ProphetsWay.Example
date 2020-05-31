@@ -1,22 +1,13 @@
 using Xunit;
 using System;
 using ProphetsWay.Example.DataAccess;
-using ProphetsWay.Example.DataAccess.NoDB;
 using ProphetsWay.Example.DataAccess.Entities;
 using FluentAssertions;
 
 namespace ProphetsWay.Example.Tests
 {
-	public class UserDaoTests
+	public class UserDaoTests : BaseUnitTests
 	{
-		IExampleDataAccess _da;
-
-		public UserDaoTests(IExampleDataAccess da = null)
-		{
-			//single instantiation of the data access class, makes for easy changing to test a separate implementation
-			_da = da ?? new ExampleDataAccess();
-		}
-
 		[Fact]
 		public void ShouldInsertUser()
 		{
