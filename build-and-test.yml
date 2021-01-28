@@ -4,10 +4,21 @@ parameters:
 steps:
 - checkout: self
   submodules: true
-- task: DotNetCoreCLI@2
-  displayName: 'Build Solution'
+
+- task: NuGetCommand@2
+  displayName: 'NuGet restore'
   inputs:
-    command: 'build'
+    restoreSolution: ProphetsWay.Example.Database/ProphetsWay.Example.Database.sqlproj
+
+- task: VSBuild@1
+  displayName: 'Build solution ProphetsWay.Example.Database/ProphetsWay.Example.Database.sqlproj'
+  inputs:
+    solution: ProphetsWay.Example.Database/ProphetsWay.Example.Database.sqlproj
+
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet build'
+  inputs:
+    projects: '**/*.csproj'
 
 - task: VSTest@2
   displayName: 'Run Unit Tests'
