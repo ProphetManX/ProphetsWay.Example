@@ -1,7 +1,4 @@
-﻿using ProphetsWay.Example.DataAccess;
-using ProphetsWay.Example.DataAccess.NoDB;
-
-namespace ProphetsWay.Example.Tests
+﻿namespace ProphetsWay.Example.Tests
 {
 	public abstract class BaseUnitTests<T>
 	{

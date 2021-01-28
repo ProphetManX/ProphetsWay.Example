@@ -5,6 +5,7 @@ using Xunit;
 
 namespace ProphetsWay.Example.Tests
 {
+	[Collection("Base Tests")]
 	public class BaseDataAccessTests : BaseUnitTests<IExampleDataAccess>
 	{
 		protected override IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();

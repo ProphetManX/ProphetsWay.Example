@@ -1,6 +1,5 @@
 using Xunit;
 using System;
-using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
 using FluentAssertions;
 using ProphetsWay.Example.DataAccess.IDaos;
@@ -8,6 +7,7 @@ using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
+	[Collection("User Dao Tests")]
 	public class UserDaoTests : BaseUnitTests<IUserDao>
 	{
 		protected override IUserDao GetIExampleDataAccess => new ExampleDataAccess();
