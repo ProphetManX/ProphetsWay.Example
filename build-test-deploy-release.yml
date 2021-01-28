@@ -34,6 +34,15 @@ stages:
         vmImage: ${{parameters.vmImage}}
 
       steps:
+      - task: bleddynrichards.Assembly-Info-Task.Assembly-Info-Task.Assembly-Info-NetFramework@2
+        displayName: 'Set Assembly Manifest Data'
+        inputs:
+          Title: ProphetsWay.Example
+          Company: ProphetsWay
+          VersionNumber: '$(SemanticVersion).$(Build.BuildId)'
+          FileVersionNumber: '$(SemanticVersion).$(Build.BuildId)'
+          InformationalVersion: '$(SemanticVersion)'
+
       - task: Assembly-Info-NetCore@2
         displayName: 'Set Assembly Info'
         inputs:
@@ -71,6 +80,7 @@ stages:
           packDirectory: '$(Build.ArtifactStagingDirectory)\alpha'
           versioningScheme: 'byEnvVar'
           versionEnvVar: 'AlphaVersion'
+        enabled: false
 
       - task: DotNetCoreCLI@2
         displayName: 'Assemble Beta NuGet Package'
@@ -80,6 +90,7 @@ stages:
           packDirectory: '$(Build.ArtifactStagingDirectory)\beta'
           versioningScheme: 'byEnvVar'
           versionEnvVar: 'BetaVersion'
+        enabled: false
 
       - task: DotNetCoreCLI@2
         displayName: 'Assemble Release NuGet Package'
@@ -89,6 +100,7 @@ stages:
           packDirectory: '$(Build.ArtifactStagingDirectory)\release'
           versioningScheme: 'byEnvVar'
           versionEnvVar: 'SemanticVersion'
+        enabled: false
 
       - task: CopyFiles@2
         displayName: 'Copy Changelog to Staging'
@@ -129,6 +141,7 @@ stages:
           packagesToPush: '$(build.artifactstagingdirectory)/drop/alpha/*.nupkg'
           nuGetFeedType: 'external'
           publishFeedCredentials: 'ProphetManX''s NuGet'
+        enabled: false
 
   - stage: DeployBeta
     displayName: Deploy Beta NuGet Package
@@ -179,6 +192,7 @@ stages:
                 packagesToPush: '$(build.artifactstagingdirectory)/drop/beta/*.nupkg'
                 nuGetFeedType: 'external'
                 publishFeedCredentials: 'ProphetManX''s NuGet'
+              enabled: false
 
   - stage: DeployRelease
     displayName: Deploy Release NuGet Package
@@ -236,3 +250,4 @@ stages:
                 packagesToPush: '$(build.artifactstagingdirectory)/drop/release/*.nupkg'
                 nuGetFeedType: 'external'
                 publishFeedCredentials: 'ProphetManX''s NuGet'
+              enabled: false
