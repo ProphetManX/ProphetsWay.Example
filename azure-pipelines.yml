@@ -21,9 +21,9 @@ stages:
 - template: build-test-deploy-release.yml
   parameters:
     vmImage: 'windows-latest'
-    repositoryName: 'ProphetManX/ProphetsWay.BaseDataAccess'
-    targetProject: '**/ProphetsWay.BaseDataAccess.csproj'
-    libraryName: 'BaseDataAccess'
+    repositoryName: 'ProphetManX/ProphetsWay.Example'
+    targetProject: '**/ProphetsWay.Example.csproj'
+    libraryName: 'Example'
     licenseUrl: 'https://opensource.org/licenses/MIT'
     description: 'A group of projects used to illustrate functionality across a few of my github projects'' database implementations.'
     
