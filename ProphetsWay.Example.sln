@@ -13,9 +13,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProphetsWay.Example.DataAcc
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{085F4B6B-6BB2-4D76-AA3C-456A842F8BD3}"
 	ProjectSection(SolutionItems) = preProject
+		azure-pipelines.yml = azure-pipelines.yml
+		build-and-test.yml = build-and-test.yml
+		build-test-deploy-release.yml = build-test-deploy-release.yml
 		CHANGELOG.md = CHANGELOG.md
 		LICENSE = LICENSE
 		README.md = README.md
+		version-variables.yml = version-variables.yml
 	EndProjectSection
 EndProject
 Global
