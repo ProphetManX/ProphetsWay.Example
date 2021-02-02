@@ -17,6 +17,9 @@ stages:
         vmImage: ${{parameters.vmImage}}
       
       steps:
+      - checkout: self
+        submodules: true
+
       - template: build-and-test.yml
         parameters:
           vmImage: ${{parameters.vmImage}}
@@ -34,6 +37,9 @@ stages:
         vmImage: ${{parameters.vmImage}}
 
       steps:
+      - checkout: self
+        submodules: true
+
       - task: bleddynrichards.Assembly-Info-Task.Assembly-Info-Task.Assembly-Info-NetFramework@2
         displayName: 'Set Assembly Manifest Data'
         inputs:

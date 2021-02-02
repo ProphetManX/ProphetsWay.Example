@@ -16,17 +16,23 @@ namespace ProphetsWay.Example.Tests
 			//setup
 			var ct = CompanyDaoTests.SetupShouldGetCompany(_da);
 			var ut = UserDaoTests.SetupShouldGetUser(_da);
-			var jt = JobDaoTests.SetupShouldGetUser(_da);
+			var jt = JobDaoTests.SetupShouldGetJob(_da);
+			var tr = TransactionDaoTests.SetupShouldGetTransaction(_da);
+			var re = ResourceDaoTests.SetupShouldGetResource(_da);
 
 			//act
 			var u2 = _da.Get<User>(ut.UserId);
 			var co2 = _da.Get<Company>(ct.CompanyId);
 			var j2 = _da.Get<Job>(jt.JobId);
+			var tr2 = _da.Get<Transaction>(tr.TransactionId);
+			var re2 = _da.Get<Resource>(re.ResourceId);
 
 			//assert
 			ct.Assertion(co2);
 			ut.Assertion(u2);
 			jt.Assertion(j2);
+			re.Assertion(re2);
+			tr.Assertion(tr2);
 		}
 
 		[Fact]
