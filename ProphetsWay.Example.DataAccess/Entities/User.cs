@@ -2,7 +2,7 @@
 
 namespace ProphetsWay.Example.DataAccess.Entities
 {
-	public class User : BaseEntity
+	public class User : BaseIntEntity
 	{
 		public string Name { get; set; }
 

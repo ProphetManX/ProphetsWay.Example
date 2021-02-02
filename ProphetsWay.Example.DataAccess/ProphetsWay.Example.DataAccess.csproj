@@ -29,10 +29,12 @@
 		<FileVersion />
 		<InformationalVersion />
 
+		<LangVersion>8.0</LangVersion>
+		<NullableContextOptions>enable</NullableContextOptions>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ProphetsWay.BaseDataAccess" Version="2.0.0" />
+		<PackageReference Include="ProphetsWay.BaseDataAccess" Version="2.1.0-287.Alpha" />
 	</ItemGroup>
 
 

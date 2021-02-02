@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using ProphetsWay.BaseDataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
 using ProphetsWay.Example.DataAccess.IDaos;
 using ProphetsWay.Example.DataAccess.NoDB.Daos;
@@ -15,11 +14,13 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 	/// If you choose to do so, you can put all your actual code within this one file and not bother with each separate DAO
 	/// but that is not recommended
 	/// </summary>
-	public class ExampleDataAccess : BaseDataAccess<int>, IExampleDataAccess
+	public class ExampleDataAccess : BaseDataAccess.BaseDataAccess, IExampleDataAccess
 	{
 		private readonly ICompanyDao _companyDao = new CompanyDao();
 		private readonly IJobDao _jobDao = new JobDao();
 		private readonly IUserDao _userDao = new UserDao();
+		private readonly ITransactionDao _transactionDao = new TransactionDao();
+		private readonly IResourceDao _resourceDao = new ResourceDao();
 
 		public void CustomUserFunctionality(User user)
 		{
@@ -41,6 +42,16 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 			return _userDao.Delete(item);
 		}
 
+		public int Delete(Transaction item)
+		{
+			return _transactionDao.Delete(item);
+		}
+
+		public int Delete(Resource item)
+		{
+			return _resourceDao.Delete(item);
+		}
+
 		public Company Get(Company item)
 		{
 			return _companyDao.Get(item);
@@ -56,14 +67,34 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 			return _userDao.Get(item);
 		}
 
+		public Transaction Get(Transaction item)
+		{
+			return _transactionDao.Get(item);
+		}
+
+		public Resource Get(Resource item)
+		{
+			return _resourceDao.Get(item);
+		}
+
 		public IList<Job> GetAll(Job item)
 		{
 			return _jobDao.GetAll(item);
 		}
 
+		public IList<Resource> GetAll(Resource item)
+		{
+			return _resourceDao.GetAll(item);
+		}
+
 		public int GetCount(Company item)
 		{
 			return _companyDao.GetCount(item);
+		}
+
+		public int GetCount(Transaction item)
+		{
+			return _transactionDao.GetCount(item);
 		}
 
 		public Company GetCustomCompanyFunction(int id)
@@ -74,6 +105,11 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		public IList<Company> GetPaged(Company item, int skip, int take)
 		{
 			return _companyDao.GetPaged(item, skip, take);
+		}
+
+		public IList<Transaction> GetPaged(Transaction item, int skip, int take)
+		{
+			return _transactionDao.GetPaged(item, skip, take);
 		}
 
 		public void Insert(Company item)
@@ -89,6 +125,16 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		public void Insert(User item)
 		{
 			_userDao.Insert(item);
+		}
+
+		public void Insert(Transaction item)
+		{
+			_transactionDao.Insert(item);
+		}
+
+		public void Insert(Resource item)
+		{
+			_resourceDao.Insert(item);
 		}
 
 		public override void TransactionCommit()
@@ -122,6 +168,16 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		public int Update(User item)
 		{
 			return _userDao.Update(item);
+		}
+
+		public int Update(Transaction item)
+		{
+			return _transactionDao.Update(item);
+		}
+
+		public int Update(Resource item)
+		{
+			return _resourceDao.Update(item);
 		}
 	}
 }

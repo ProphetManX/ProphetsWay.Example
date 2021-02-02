@@ -1,4 +1,4 @@
-using Xunit;
+﻿using Xunit;
 using System.Linq;
 using System.Collections.Generic;
 using System;
@@ -9,16 +9,16 @@ using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("Job Dao Tests")]
-	public class JobDaoTests : BaseUnitTests<IJobDao>
+	[Collection("Resource Dao Tests")]
+	public class ResourceDaoTests : BaseUnitTests<IResourceDao>
 	{
-		protected override IJobDao GetIExampleDataAccess => new ExampleDataAccess();
+		protected override IResourceDao GetIExampleDataAccess => new ExampleDataAccess();
 
 		[Fact]
-		public void ShouldInsertJob()
+		public void ShouldInsertResource()
 		{
 			//setup
-			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
+			var co = new Resource { Name = $"Bob {Guid.NewGuid()}" };
 
 			//act
 			_da.Insert(co);
@@ -27,10 +27,10 @@ namespace ProphetsWay.Example.Tests
 			co.Id.Should().NotBe(default);
 		}
 
-		public delegate void GetAssertion(Job co);
-		public static (int JobId, GetAssertion Assertion) SetupShouldGetJob(IJobDao da)
+		public delegate void GetAssertion(Resource co);
+		public static (Guid ResourceId, GetAssertion Assertion) SetupShouldGetResource(IResourceDao da)
 		{
-			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
+			var co = new Resource { Name = $"Bob {Guid.NewGuid()}" };
 			da.Insert(co);
 
 			return (co.Id, (co2) =>
@@ -41,24 +41,24 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
-		public void ShouldGetJob()
+		public void ShouldGetResource()
 		{
 			//setup
-			var t = SetupShouldGetJob(_da);
+			var t = SetupShouldGetResource(_da);
 
 			//act
-			var co2 = _da.Get(new Job { Id = t.JobId });
+			var co2 = _da.Get(new Resource { Id = t.ResourceId });
 
 			//assert
 			t.Assertion(co2);
 		}
 
 		[Fact]
-		public void ShouldUpdateJob()
+		public void ShouldUpdateResource()
 		{
 			//setup
 			const string editText = "blarg";
-			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
+			var co = new Resource { Name = $"Bob {Guid.NewGuid()}" };
 			_da.Insert(co);
 
 			//act
@@ -73,10 +73,10 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
-		public void ShouldDeleteJob()
+		public void ShouldDeleteResource()
 		{
 			//setup
-			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
+			var co = new Resource { Name = $"Bob {Guid.NewGuid()}" };
 			_da.Insert(co);
 
 			//act
@@ -89,26 +89,26 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
-		public void ShouldGetAllJobs()
+		public void ShouldGetAllResources()
 		{
 			//setup
-			var assertion = SetupShouldGetAllJobs(_da);
+			var assertion = SetupShouldGetAllResources(_da);
 
 			//act
-			var all = _da.GetAll(new Job());
+			var all = _da.GetAll(new Resource());
 
 			//assert
 			assertion(all);
 		}
 
-		public delegate void Assertion(IList<Job> all);
-		public static Assertion SetupShouldGetAllJobs(IJobDao da)
+		public delegate void Assertion(IList<Resource> all);
+		public static Assertion SetupShouldGetAllResources(IResourceDao da)
 		{
-			var co = new Job { Name = $"Eric {Guid.NewGuid()}" };
+			var co = new Resource { Name = $"Eric {Guid.NewGuid()}" };
 			da.Insert(co);
-			var co1 = new Job { Name = $"Sam {Guid.NewGuid()}" };
+			var co1 = new Resource { Name = $"Sam {Guid.NewGuid()}" };
 			da.Insert(co1);
-			var co2 = new Job { Name = $"Jim {Guid.NewGuid()}" };
+			var co2 = new Resource { Name = $"Jim {Guid.NewGuid()}" };
 			da.Insert(co2);
 
 			return (all) =>
