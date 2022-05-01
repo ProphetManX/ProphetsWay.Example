@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30114.105
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "ProphetsWay.Example.Database", "ProphetsWay.Example.Database\ProphetsWay.Example.Database.sqlproj", "{828E118D-68BA-4F92-8794-46CBF85AC4C3}"
 EndProject
@@ -13,13 +13,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProphetsWay.Example.DataAcc
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{085F4B6B-6BB2-4D76-AA3C-456A842F8BD3}"
 	ProjectSection(SolutionItems) = preProject
-		azure-pipelines.yml = azure-pipelines.yml
-		build-and-test.yml = build-and-test.yml
-		build-test-deploy-release.yml = build-test-deploy-release.yml
+		app-variables.yml = app-variables.yml
 		CHANGELOG.md = CHANGELOG.md
 		LICENSE = LICENSE
+		local-pipeline.yml = local-pipeline.yml
 		README.md = README.md
-		version-variables.yml = version-variables.yml
 	EndProjectSection
 EndProject
 Global

@@ -5,7 +5,8 @@ variables:
   Patch: '1'
 
   # set these once and forget them per project/repo 
-  TargetProject: '**/ProphetsWay.Example.csproj'
+  HasSqlProj: 'yes'
+  #TargetProject: ''
   PackageId: 'ProphetsWay.Example'
   Authors: 'G. Gordon Nasseri'
   Company: 'ProphetsWay'
