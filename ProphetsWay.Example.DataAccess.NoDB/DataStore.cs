@@ -1,4 +1,6 @@
 ﻿using ProphetsWay.Example.DataAccess.Entities;
+
+using System;
 using System.Collections.Generic;
 
 namespace ProphetsWay.Example.DataAccess.NoDB
@@ -15,5 +17,9 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		public static readonly Dictionary<int, Company> Companies = new Dictionary<int, Company>();
 
 		public static readonly Dictionary<int, User> Users = new Dictionary<int, User>();
+
+		public static readonly Dictionary<long, Transaction> Transactions = new Dictionary<long, Transaction>();
+
+		public static readonly Dictionary<Guid, Resource> Resources = new Dictionary<Guid, Resource>();
 	}
 }

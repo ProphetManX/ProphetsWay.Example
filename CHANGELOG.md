@@ -1,3 +1,12 @@
+# v2.1.1
+### Updated to include 2 new entities that have unique primary key types
+- Newly created entities, ```Transaction``` and ```Resource``` to support ```long``` and ```Guid``` primary key types respectively.
+- Unit tests have been created as well.
+- Updated pipeline to support new yml pipeline repo
+- Added support for .Net 6.0
+
+
+
 # v2.0.0
 ### Updated to support .net 5.0
 Updated a few things, unfortunately it removed a little bit of functionality, so it counts as a major update, 

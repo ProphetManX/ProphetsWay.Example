@@ -1,6 +1,6 @@
 ﻿namespace ProphetsWay.Example.DataAccess.Entities
 {
-	public class Company : BaseEntity
+	public class Company : BaseIntEntity
 	{
 		public string Name { get; set; }
 

@@ -1,11 +1,8 @@
 # ProphetsWay.Example
 
 
-| Master Build Status | NuGet Alpha | NuGet Beta | NuGet Release |
-|   ---   |   ---   |   ---   |   ---   |
-| [![Build Status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/Example?branchName=master&stageName=Build%20Stage&jobName=CI%20Build)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=21&branchName=master)| [![Build Status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/Example?branchName=master&stageName=Deploy%20Alpha%20NuGet%20Package)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=21&branchName=master) | [![Build Status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/Example?branchName=master&stageName=Deploy%20Beta%20NuGet%20Package)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=21&branchName=master) | [![Build Status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/Example?branchName=master&stageName=Deploy%20Release%20NuGet%20Package)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=21&branchName=master)
-
-
+Build Status:  
+[![Build Status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/ProphetManX.ProphetsWay.Example?repoName=ProphetManX%2FProphetsWay.Example&branchName=main)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=24&repoName=ProphetManX%2FProphetsWay.Example&branchName=main)
 
 ProphetsWay.Example is a repository that consists of the following projects:
  - ProphetsWay.Example.DataAccess
