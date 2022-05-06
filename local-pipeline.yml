@@ -43,6 +43,10 @@ parameters:
   default: 'windows-latest'
 
 
+variables:
+- template: '${{ parameters.LocalVariables }}'
+
+
 stages:
 - template: 'stages/prophets-pipeline.yml@pp'
   parameters:
