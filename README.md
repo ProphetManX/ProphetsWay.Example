@@ -1,9 +1,8 @@
 # ProphetsWay.Example
 
 
-Build Status:
-[UPDATE ME]
-
+Build Status:  
+[![Build Status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/ProphetManX.ProphetsWay.Example?repoName=ProphetManX%2FProphetsWay.Example&branchName=main)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=24&repoName=ProphetManX%2FProphetsWay.Example&branchName=main)
 
 ProphetsWay.Example is a repository that consists of the following projects:
  - ProphetsWay.Example.DataAccess

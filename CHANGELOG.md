@@ -1,4 +1,4 @@
-# v2.1.0
+# v2.1.1
 ### Updated to include 2 new entities that have unique primary key types
 - Newly created entities, ```Transaction``` and ```Resource``` to support ```long``` and ```Guid``` primary key types respectively.
 - Unit tests have been created as well.
