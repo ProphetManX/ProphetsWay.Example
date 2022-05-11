@@ -8,5 +8,6 @@ variables:
   HasSqlProj: 'yes'  #can be empty or ignored if unnecessary, but if "yes" then pipeline will find any *.sqlproj projects and build them 
   #PostTargetToNuGet: ''  #can be empty or ignored if unnecessary, but if "yes" then pipeline will build alpha, beta, and semantic NuGet release packages
   #TargetProject: '**/ProphetsWay.Example.csproj'
+  Product: 'Example'
   #NuGetFeedCredentialName: 'ProphetManX''s NuGet'
   GitHubConnectionName: 'ProphetsWay@GitHub'
