@@ -35,6 +35,17 @@ namespace ProphetsWay.Example.Tests
 			tr.Assertion(tr2);
 		}
 
+        [Fact]
+		public void ShouldDeleteGenericTypes()
+        {
+			var test = CompanyDaoTests.SetupShouldInsertCompanyForDeletion(_da);
+
+			var count = _da.Delete<Company>(test.Company);
+			var co2 = _da.Get(test.Company);
+
+			test.Assert(count, co2);
+        }
+
 		[Fact]
 		public void ShouldGetGenericPaged()
 		{

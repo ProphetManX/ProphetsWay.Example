@@ -34,7 +34,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ProphetsWay.BaseDataAccess" Version="2.1.3" />
+		<PackageReference Include="ProphetsWay.BaseDataAccess" Version="2.1.5-429.Alpha" />
 	</ItemGroup>
 
 

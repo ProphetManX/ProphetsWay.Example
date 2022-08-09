@@ -72,20 +72,33 @@ namespace ProphetsWay.Example.Tests
 
 		}
 
+		public delegate void DeleteAssertion(int count, Company co);
+		public static (Company Company, DeleteAssertion Assert) SetupShouldInsertCompanyForDeletion(ICompanyDao da)
+        {
+			var co = new Company { Name = $"Bob {Guid.NewGuid()}" };
+			da.Insert(co);
+
+			return (co, (int count, Company co2) =>
+			{
+				count.Should().Be(1);
+				co2.Should().BeNull();
+			}
+			);
+		}
+
+
 		[Fact]
 		public void ShouldDeleteCompany()
 		{
 			//setup
-			var co = new Company { Name = $"Bob {Guid.NewGuid()}" };
-			_da.Insert(co);
+			var test = SetupShouldInsertCompanyForDeletion(_da);
 
 			//act
-			var count = _da.Delete(co);
-			var co2 = _da.Get(co);
+			var count = _da.Delete(test.Company);
+			var co2 = _da.Get(test.Company);
 
 			//assert
-			count.Should().Be(1);
-			co2.Should().BeNull();
+			test.Assert(count, co2);
 		}
 
 		public delegate void CountAssertion(int count);
