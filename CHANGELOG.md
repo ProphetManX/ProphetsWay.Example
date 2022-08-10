@@ -1,3 +1,6 @@
+# v2.1.2
+### Added support for generic CRUD calls
+
 # v2.1.1
 ### Updated to include 2 new entities that have unique primary key types
 - Newly created entities, ```Transaction``` and ```Resource``` to support ```long``` and ```Guid``` primary key types respectively.

@@ -14,9 +14,9 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldGetGenericTypes()
 		{
 			//setup
-			var ct = CompanyDaoTests.SetupShouldGetCompany(_da);
+			var ct = CompanyDaoTests.Setup_InsertCompany_TestGet(_da);
 			var ut = UserDaoTests.SetupShouldGetUser(_da);
-			var jt = JobDaoTests.SetupShouldGetJob(_da);
+			var jt = JobDaoTests.Setup_InsertJob_TestGet(_da);
 			var tr = TransactionDaoTests.SetupShouldGetTransaction(_da);
 			var re = ResourceDaoTests.SetupShouldGetResource(_da);
 
@@ -34,6 +34,45 @@ namespace ProphetsWay.Example.Tests
 			re.Assertion(re2);
 			tr.Assertion(tr2);
 		}
+
+        [Fact]
+		public void ShouldDeleteGenericTypes()
+        {
+			var coTest = CompanyDaoTests.Setup_InsertCompany_TestDelete(_da);
+			var joTest = JobDaoTests.Setup_InsertJob_TestDelete(_da);
+
+			var coCount = _da.Delete<Company>(coTest.Company);
+			var joCount = _da.Delete<Job>(joTest.Job);
+
+			coTest.Assert(coCount);
+			joTest.Assert(joCount);
+        }
+
+        [Fact]
+		public void ShouldInsertGenericTypes()
+        {
+			var coTest = CompanyDaoTests.Setup_CreateCompany_TestInsert();
+			var joTest = JobDaoTests.Setup_CreateJob_TestInsert();
+
+			_da.Insert<Company>(coTest.Company);
+			_da.Insert<Job>(joTest.Job);
+
+			coTest.Assert(coTest.Company);
+			joTest.Assert(joTest.Job);
+        }
+
+        [Fact]
+		public void ShouldUpdateGenericTypes()
+        {
+			var coTest = CompanyDaoTests.Setup_InsertCompany_TestUpdate(_da);
+			var joTest = JobDaoTests.Setup_InsertJob_TestUpdate(_da);
+
+			var coCount = _da.Update<Company>(coTest.Company);
+			var joCount = _da.Update<Job>(joTest.Job);
+
+			coTest.Assert(coCount);
+			joTest.Assert(joCount);
+        }
 
 		[Fact]
 		public void ShouldGetGenericPaged()
@@ -62,7 +101,6 @@ namespace ProphetsWay.Example.Tests
 			//assert
 			assertion(count);
 		}
-
 
 		[Fact]
 		public void ShouldGetGenericAll()

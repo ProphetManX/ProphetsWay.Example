@@ -14,26 +14,39 @@ namespace ProphetsWay.Example.Tests
 	{
 		protected override IJobDao GetIExampleDataAccess => new ExampleDataAccess();
 
+		public static Job NewJob => new Job { Name = $"Bob {Guid.NewGuid()}" };
+
+
+		public delegate void InsertAssertion(Job co);
+		public static (Job Job, InsertAssertion Assert) Setup_CreateJob_TestInsert()
+		{
+			return (NewJob, (Job co) =>
+			{
+				co.Id.Should().NotBe(default);
+			}
+			);
+		}
+
 		[Fact]
 		public void ShouldInsertJob()
 		{
 			//setup
-			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
+			var coTest = JobDaoTests.Setup_CreateJob_TestInsert();
 
 			//act
-			_da.Insert(co);
+			_da.Insert(coTest.Job);
 
 			//assert
-			co.Id.Should().NotBe(default);
+			coTest.Assert(coTest.Job);
 		}
 
 		public delegate void GetAssertion(Job co);
-		public static (int JobId, GetAssertion Assertion) SetupShouldGetJob(IJobDao da)
+		public static (int JobId, GetAssertion Assertion) Setup_InsertJob_TestGet(IJobDao da)
 		{
-			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
+			var co = NewJob;
 			da.Insert(co);
 
-			return (co.Id, (co2) =>
+			return (co.Id, (Job co2) =>
 			{
 				co2.Name.Should().Be(co.Name);
 			}
@@ -44,7 +57,7 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldGetJob()
 		{
 			//setup
-			var t = SetupShouldGetJob(_da);
+			var t = Setup_InsertJob_TestGet(_da);
 
 			//act
 			var co2 = _da.Get(new Job { Id = t.JobId });
@@ -53,39 +66,63 @@ namespace ProphetsWay.Example.Tests
 			t.Assertion(co2);
 		}
 
+		public delegate void UpdateAssertion(int count);
+		public static (Job Job, UpdateAssertion Assert) Setup_InsertJob_TestUpdate(IJobDao da)
+		{
+			var co = NewJob;
+			da.Insert(co);
+			co.Something = "Edited Text, after the insert has completed.";
+
+			return (co, (count) => {
+				var co2 = da.Get(co);
+
+				count.Should().Be(1);
+				co.Id.Should().Be(co2.Id);
+				co.Something.Should().Be(co2.Something);
+			}
+			);
+		}
+
 		[Fact]
 		public void ShouldUpdateJob()
 		{
 			//setup
-			const string editText = "blarg";
-			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
-			_da.Insert(co);
+			var test = Setup_InsertJob_TestUpdate(_da);
 
 			//act
-			co.Name = editText;
-			var count = _da.Update(co);
-			var co2 = _da.Get(co);
+			var count = _da.Update(test.Job);
 
 			//assert
-			count.Should().Be(1);
-			co2.Name.Should().Be(editText);
-
+			test.Assert(count);
 		}
+
+		public delegate void DeleteAssertion(int count);
+		public static (Job Job, DeleteAssertion Assert) Setup_InsertJob_TestDelete(IJobDao da)
+		{
+			var co = NewJob;
+			da.Insert(co);
+
+			return (co, (int count) =>
+			{
+				count.Should().Be(1);
+				var freshQueryCo = da.Get(co);
+				freshQueryCo.Should().BeNull();
+			}
+			);
+		}
+
 
 		[Fact]
 		public void ShouldDeleteJob()
 		{
 			//setup
-			var co = new Job { Name = $"Bob {Guid.NewGuid()}" };
-			_da.Insert(co);
+			var test = Setup_InsertJob_TestDelete(_da);
 
 			//act
-			var count = _da.Delete(co);
-			var co2 = _da.Get(co);
+			var count = _da.Delete(test.Job);
 
 			//assert
-			count.Should().Be(1);
-			co2.Should().BeNull();
+			test.Assert(count);
 		}
 
 		[Fact]
@@ -104,11 +141,11 @@ namespace ProphetsWay.Example.Tests
 		public delegate void Assertion(IList<Job> all);
 		public static Assertion SetupShouldGetAllJobs(IJobDao da)
 		{
-			var co = new Job { Name = $"Eric {Guid.NewGuid()}" };
+			var co = NewJob;
 			da.Insert(co);
-			var co1 = new Job { Name = $"Sam {Guid.NewGuid()}" };
+			var co1 = NewJob;
 			da.Insert(co1);
-			var co2 = new Job { Name = $"Jim {Guid.NewGuid()}" };
+			var co2 = NewJob;
 			da.Insert(co2);
 
 			return (all) =>

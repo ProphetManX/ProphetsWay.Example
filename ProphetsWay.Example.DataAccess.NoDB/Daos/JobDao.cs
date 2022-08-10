@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 {
-	internal class JobDao : IJobDao
+	internal class JobDao : BaseDao, IJobDao
 	{
 		public int Delete(Job item)
 		{
@@ -34,9 +34,7 @@ namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 		{
 			lock (DataStore.Jobs)
 			{
-				item.Id = DataStore.Jobs.Keys.Count > 0
-				? DataStore.Jobs.Keys.Max() + 1
-				: 1;
+				item.Id = Random.Next(int.MaxValue);
 
 				DataStore.Jobs.Add(item.Id, item);
 			}
