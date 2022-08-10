@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 {
-	internal class UserDao : IUserDao
+	internal class UserDao : BaseDao, IUserDao
 	{
 		public void CustomUserFunctionality(User user)
 		{
@@ -34,9 +34,7 @@ namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 		{
 			lock (DataStore.Users)
 			{
-				item.Id = DataStore.Users.Keys.Count > 0
-				? DataStore.Users.Keys.Max() + 1
-				: 1;
+				item.Id = Random.Next(int.MaxValue);
 
 				DataStore.Users.Add(item.Id, item);
 			}
