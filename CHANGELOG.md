@@ -1,3 +1,8 @@
+# v2.1.3
+### Missing Tables in DB Project
+The Database project had two new tables ```Resources``` and ```Transactions```, but they weren't included 
+in the solution/project.  That has been fixed.
+
 # v2.1.2
 ### Added support for generic CRUD calls
 

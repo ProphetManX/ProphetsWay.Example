@@ -71,6 +71,9 @@
     <None Include="PostBuildScripts\CreateUsers.sql" />
     <None Include="PostBuildScripts\CreateCompanies.sql" />
     <None Include="PostBuildScripts\CreateJobs.sql" />
+    <Build Include="dbo\Tables\Resources.sql" />
+    <Build Include="dbo\Tables\Transactions.sql" />
+    <None Include="PostBuildScripts\CreateTransactions.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="PostBuildScripts\CreateDbUser.sql" />
