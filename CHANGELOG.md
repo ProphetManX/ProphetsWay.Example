@@ -1,3 +1,7 @@
+# v2.1.4
+### Fixing a problem found when trying to build/test a physical DB instance
+Updating db creation scripts, and unit tests to account for more realistic usage situations.
+
 # v2.1.3
 ### Missing Tables in DB Project
 The Database project had two new tables ```Resources``` and ```Transactions```, but they weren't included 
