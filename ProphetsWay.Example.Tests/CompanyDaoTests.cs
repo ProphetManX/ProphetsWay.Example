@@ -70,9 +70,11 @@ namespace ProphetsWay.Example.Tests
         {
 			var co = NewCompany;
 			da.Insert(co);
-			co.Other = "Edited Text, after the insert has completed.";
 
-			return (co, (count) => {
+			var newCo = da.Get(co);
+			newCo.Other = "Edited Text, after the insert has completed.";
+
+			return (newCo, (count) => {
 				var co2 = da.Get(co);
 
 				count.Should().Be(1);

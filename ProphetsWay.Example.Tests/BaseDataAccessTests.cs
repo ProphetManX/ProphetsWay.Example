@@ -65,9 +65,9 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldUpdateGenericTypes()
         {
 			var coTest = CompanyDaoTests.Setup_InsertCompany_TestUpdate(_da);
-			var joTest = JobDaoTests.Setup_InsertJob_TestUpdate(_da);
-
 			var coCount = _da.Update<Company>(coTest.Company);
+			
+			var joTest = JobDaoTests.Setup_InsertJob_TestUpdate(_da);
 			var joCount = _da.Update<Job>(joTest.Job);
 
 			coTest.Assert(coCount);
