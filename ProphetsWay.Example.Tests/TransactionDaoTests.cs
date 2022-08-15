@@ -7,17 +7,19 @@ using ProphetsWay.Example.DataAccess.NoDB;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Xunit;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("Transaction Dao Tests")]
+    [Collection("Transaction Dao Tests")]
 	public class TransactionDaoTests : BaseUnitTests<ITransactionDao>
 	{
 		protected override ITransactionDao GetIExampleDataAccess => new ExampleDataAccess();
+
+		protected static Random Random = new Random();
+
+		public static Transaction NewTransaction => new Transaction { DateOfAction = DateTime.Now, Amount = Random.Next() };
 
 		[Fact]
 		public void ShouldInsertTransaction()
@@ -34,7 +36,7 @@ namespace ProphetsWay.Example.Tests
 
 		public static (long TransactionId, Func<Transaction, int> Assertion) SetupShouldGetTransaction(ITransactionDao dao)
 		{
-			var t = new Transaction { DateOfAction = DateTime.Now, Amount = DateTime.Now.Ticks };
+			var t = NewTransaction;
 			dao.Insert(t);
 
 			return (t.Id, (t2) =>
@@ -64,8 +66,8 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldUpdateTransaction()
 		{
 			//setup
-			decimal editAmount = DateTime.Now.Ticks;
-			var t = new Transaction { DateOfAction = DateTime.Now, Amount = -1 };
+			decimal editAmount = Random.Next();
+			var t = NewTransaction;
 			_da.Insert(t);
 
 			//act
@@ -82,7 +84,7 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldDeleteJob()
 		{
 			//setup
-			var co = new Transaction { DateOfAction = DateTime.Now };
+			var co = NewTransaction;
 			_da.Insert(co);
 
 			//act
@@ -96,11 +98,11 @@ namespace ProphetsWay.Example.Tests
 
 		public static Func<int, int> SetupShouldGetCount(ITransactionDao dao)
 		{
-			var t = new Transaction { DateOfAction = DateTime.Now, Amount = DateTime.Now.Ticks };
+			var t = NewTransaction;
 			dao.Insert(t);
-			var t2 = new Transaction { DateOfAction = t.DateOfAction.AddSeconds(1), Amount = t.Amount + 1 };
+			var t2 = NewTransaction;
 			dao.Insert(t2);
-			var t3 = new Transaction { DateOfAction = t.DateOfAction.AddSeconds(2), Amount = t.Amount + 2 };
+			var t3 = NewTransaction;
 			dao.Insert(t3);
 
 			return (count) =>
@@ -117,7 +119,7 @@ namespace ProphetsWay.Example.Tests
 			var assertion = SetupShouldGetCount(_da);
 
 			//act
-			var count = _da.GetCount(new Transaction());
+			var count = _da.GetCount(NewTransaction);
 
 			//assert
 			assertion(count);
@@ -125,11 +127,11 @@ namespace ProphetsWay.Example.Tests
 
 		public static Func<int, IList<Transaction>, IList<Transaction>, int> SetupShouldGetPagedView(ITransactionDao dao)
 		{
-			var t = new Transaction { DateOfAction = DateTime.Now, Amount = DateTime.Now.Ticks };
+			var t = NewTransaction;
 			dao.Insert(t);
-			var t2 = new Transaction { DateOfAction = t.DateOfAction.AddSeconds(1), Amount = t.Amount + 1 };
+			var t2 = NewTransaction;
 			dao.Insert(t2);
-			var t3 = new Transaction { DateOfAction = t.DateOfAction.AddSeconds(2), Amount = t.Amount + 2 };
+			var t3 = NewTransaction;
 			dao.Insert(t3);
 
 			return (count, all, subset) =>
@@ -148,9 +150,9 @@ namespace ProphetsWay.Example.Tests
 			var assertion = SetupShouldGetPagedView(_da);
 
 			//act
-			var count = _da.GetCount(new Transaction());
-			var view = _da.GetPaged(new Transaction(), 0, count);
-			var subset = _da.GetPaged(new Transaction(), 1, 1);
+			var count = _da.GetCount(NewTransaction);
+			var view = _da.GetPaged(NewTransaction, 0, count);
+			var subset = _da.GetPaged(NewTransaction, 1, 1);
 
 			//assert
 			assertion(count, view, subset);
