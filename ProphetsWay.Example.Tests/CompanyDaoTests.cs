@@ -138,7 +138,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (count) =>
 			{
-				count.Should().BeGreaterOrEqualTo(3);
+				count.Should().BeGreaterThanOrEqualTo(3);
 			};
 		}
 

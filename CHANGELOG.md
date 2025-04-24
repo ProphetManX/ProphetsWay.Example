@@ -1,3 +1,7 @@
+# v2.2.0
+### Updated to support .net 7.0, 8.0, and 9.0
+Updated the target frameworks to include .net 7.0, 8.0, and 9.0.  Removed support for the deprecated versions that are end of life.  No functional changes have been made.
+
 # v2.1.4
 ### Fixing a problem found when trying to build/test a physical DB instance
 Updating db creation scripts, and unit tests to account for more realistic usage situations.

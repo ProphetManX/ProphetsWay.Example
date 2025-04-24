@@ -152,7 +152,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (all) =>
 			{
-				all.Count.Should().BeGreaterOrEqualTo(3);
+				all.Count.Should().BeGreaterThanOrEqualTo(3);
 				all.Where(x => x.Name == co.Name).Count().Should().Be(1);
 				all.Where(x => x.Name == co1.Name).Count().Should().Be(1);
 				all.Where(x => x.Name == co2.Name).Count().Should().Be(1);
