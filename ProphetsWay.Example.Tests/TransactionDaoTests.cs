@@ -44,7 +44,7 @@ namespace ProphetsWay.Example.Tests
 				//checking with error threshold, because of accuracy differences in how DB stores datetime values
 				var diff = t2.DateOfAction - t.DateOfAction;
 				var errThreshold = TimeSpan.FromMilliseconds(10);
-				diff.Should().BeLessOrEqualTo(errThreshold);
+				diff.Should().BeLessThanOrEqualTo(errThreshold);
 				t2.Amount.Should().Be(t.Amount);
 
 				return 1;
@@ -110,7 +110,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (count) =>
 			{
-				count.Should().BeGreaterOrEqualTo(3);
+				count.Should().BeGreaterThanOrEqualTo(3);
 				return 1;
 			};
 		}
