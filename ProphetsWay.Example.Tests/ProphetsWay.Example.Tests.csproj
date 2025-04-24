@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<TargetFrameworks>
 			net472;net48;
-			net60;net70;net80;net90;
+			net60;net80;net90;
 		</TargetFrameworks>
 		
 		<IsPackable>false</IsPackable>
