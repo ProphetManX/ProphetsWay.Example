@@ -3,13 +3,13 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using ProphetsWay.Example.DataAccess.Entities;
-using FluentAssertions;
+using Shouldly;
 using ProphetsWay.Example.DataAccess.IDaos;
 using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("Company Dao Tests")]
+	[Collection(TestCollections.CoreEntities)]
 	public class CompanyDaoTests : BaseUnitTests<ICompanyDao>
 	{
 		protected override ICompanyDao GetIExampleDataAccess => new ExampleDataAccess();
@@ -21,7 +21,7 @@ namespace ProphetsWay.Example.Tests
         {
 			return (NewCompany, (Company co) =>
 			{
-				co.Id.Should().NotBe(default);
+				co.Id.ShouldNotBe(default);
 			}
 			);
 		}
@@ -47,7 +47,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (co.Id, (Company co2) =>
 			{
-				co2.Name.Should().Be(co.Name);
+				co2.Name.ShouldBe(co.Name);
 			}
 			);
 		}
@@ -77,9 +77,9 @@ namespace ProphetsWay.Example.Tests
 			return (newCo, (count) => {
 				var co2 = da.Get(co);
 
-				count.Should().Be(1);
-				co.Id.Should().Be(co2.Id);
-				co.Other.Should().Be(co2.Other);
+				count.ShouldBe(1);
+				co.Id.ShouldBe(co2.Id);
+				co.Other.ShouldBe(co2.Other);
 			}
 			);
         }
@@ -105,9 +105,9 @@ namespace ProphetsWay.Example.Tests
 
 			return (co, (int count) =>
 			{
-				count.Should().Be(1);
+				count.ShouldBe(1);
 				var freshQueryCo = da.Get(co);
-				freshQueryCo.Should().BeNull();
+				freshQueryCo.ShouldBeNull();
 			}
 			);
 		}
@@ -138,7 +138,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (count) =>
 			{
-				count.Should().BeGreaterThanOrEqualTo(3);
+				count.ShouldBeGreaterThanOrEqualTo(3);
 			};
 		}
 
@@ -167,9 +167,9 @@ namespace ProphetsWay.Example.Tests
 
 			return (count, all, subset) =>
 			{
-				all.Count.Should().Be(count);
-				subset.Count.Should().Be(1);
-				subset.First().Id.Should().Be(all.Skip(1).First().Id);
+				all.Count.ShouldBe(count);
+				subset.Count.ShouldBe(1);
+				subset.First().Id.ShouldBe(all.Skip(1).First().Id);
 			};
 		}
 
@@ -203,7 +203,7 @@ namespace ProphetsWay.Example.Tests
 			var custom = _da.GetCustomCompanyFunction(100);
 
 			//assert
-			custom.Should().NotBeNull();
+			custom.ShouldNotBeNull();
 		}
 	}
 }

@@ -1,13 +1,13 @@
 using Xunit;
 using System;
 using ProphetsWay.Example.DataAccess.Entities;
-using FluentAssertions;
+using Shouldly;
 using ProphetsWay.Example.DataAccess.IDaos;
 using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("User Dao Tests")]
+	[Collection(TestCollections.CoreEntities)]
 	public class UserDaoTests : BaseUnitTests<IUserDao>
 	{
 		protected override IUserDao GetIExampleDataAccess => new ExampleDataAccess();
@@ -22,7 +22,7 @@ namespace ProphetsWay.Example.Tests
 			_da.Insert(co);
 
 			//assert
-			co.Id.Should().NotBe(default);
+			co.Id.ShouldNotBe(default);
 		}
 
 		public delegate void GetAssertion(User co);
@@ -33,7 +33,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (co.Id, (co2) =>
 			{
-				co2.Name.Should().Be(co.Name);
+				co2.Name.ShouldBe(co.Name);
 			}
 			);
 		}
@@ -65,8 +65,8 @@ namespace ProphetsWay.Example.Tests
 			var co2 = _da.Get(co);
 
 			//assert
-			count.Should().Be(1);
-			co2.Whatever.Should().Be(editText);
+			count.ShouldBe(1);
+			co2.Whatever.ShouldBe(editText);
 
 		}
 
@@ -82,8 +82,8 @@ namespace ProphetsWay.Example.Tests
 			var co2 = _da.Get(co);
 
 			//assert
-			count.Should().Be(1);
-			co2.Should().BeNull();
+			count.ShouldBe(1);
+			co2.ShouldBeNull();
 		}
 
 		[Fact]
@@ -99,9 +99,9 @@ namespace ProphetsWay.Example.Tests
 			var co2 = _da.Get(co);
 
 			//assert
-			co2.Id.Should().Be(co.Id);
-			co2.Whatever.Should().NotBe(currWhatever);
-			co2.Whatever.Should().Be("custom functionality triggered");
+			co2.Id.ShouldBe(co.Id);
+			co2.Whatever.ShouldNotBe(currWhatever);
+			co2.Whatever.ShouldBe("custom functionality triggered");
 		}
 
 	}

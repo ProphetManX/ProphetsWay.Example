@@ -3,13 +3,13 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using ProphetsWay.Example.DataAccess.Entities;
-using FluentAssertions;
+using Shouldly;
 using ProphetsWay.Example.DataAccess.IDaos;
 using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("Job Dao Tests")]
+	[Collection(TestCollections.CoreEntities)]
 	public class JobDaoTests : BaseUnitTests<IJobDao>
 	{
 		protected override IJobDao GetIExampleDataAccess => new ExampleDataAccess();
@@ -22,7 +22,7 @@ namespace ProphetsWay.Example.Tests
 		{
 			return (NewJob, (Job co) =>
 			{
-				co.Id.Should().NotBe(default);
+				co.Id.ShouldNotBe(default);
 			}
 			);
 		}
@@ -48,7 +48,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (co.Id, (Job co2) =>
 			{
-				co2.Name.Should().Be(co.Name);
+				co2.Name.ShouldBe(co.Name);
 			}
 			);
 		}
@@ -78,9 +78,9 @@ namespace ProphetsWay.Example.Tests
 			return (newCo, (count) => {
 				var co2 = da.Get(co);
 
-				count.Should().Be(1);
-				co.Id.Should().Be(co2.Id);
-				co.Something.Should().Be(co2.Something);
+				count.ShouldBe(1);
+				co.Id.ShouldBe(co2.Id);
+				co.Something.ShouldBe(co2.Something);
 			}
 			);
 		}
@@ -106,9 +106,9 @@ namespace ProphetsWay.Example.Tests
 
 			return (co, (int count) =>
 			{
-				count.Should().Be(1);
+				count.ShouldBe(1);
 				var freshQueryCo = da.Get(co);
-				freshQueryCo.Should().BeNull();
+				freshQueryCo.ShouldBeNull();
 			}
 			);
 		}
@@ -152,10 +152,10 @@ namespace ProphetsWay.Example.Tests
 
 			return (all) =>
 			{
-				all.Count.Should().BeGreaterThanOrEqualTo(3);
-				all.Where(x => x.Name == co.Name).Count().Should().Be(1);
-				all.Where(x => x.Name == co1.Name).Count().Should().Be(1);
-				all.Where(x => x.Name == co2.Name).Count().Should().Be(1);
+				all.Count.ShouldBeGreaterThanOrEqualTo(3);
+				all.Where(x => x.Name == co.Name).Count().ShouldBe(1);
+				all.Where(x => x.Name == co1.Name).Count().ShouldBe(1);
+				all.Where(x => x.Name == co2.Name).Count().ShouldBe(1);
 			};
 		}
 

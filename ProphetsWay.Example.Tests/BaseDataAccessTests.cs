@@ -5,7 +5,9 @@ using Xunit;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("Base Tests")]
+	//Touches Company, User, Job, Transaction and Resource, and asserts over whole-set counts while doing it,
+	//so it shares a collection with every class that touches any of them - see TestCollections.
+	[Collection(TestCollections.CoreEntities)]
 	public class BaseDataAccessTests : BaseUnitTests<IExampleDataAccess>
 	{
 		protected override IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();
