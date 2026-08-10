@@ -241,6 +241,157 @@ namespace ProphetsWay.Example.Tests
 			test.Assert(all);
 		}
 
+		/// <summary>
+		/// Rule 5's other half. Every other assertion in this class about <c>GetAll</c> runs against a store
+		/// that has something in it, so the most common way to break the rule - returning <c>null</c>, or a
+		/// <c>null</c>-yielding query result, when there is nothing to return - is never reached. This is the
+		/// same shape as <c>Setup_DeleteEveryDepartment_TestEmptyViews</c>, and it is safe for the same
+		/// reason: the <see cref="TestCollections.CompanyResources"/> collection runs its classes one at a
+		/// time, and every other test in it creates the joins it needs.
+		/// </summary>
+		public delegate void EmptyViewAssertion(IList<CompanyResource> all);
+		public static EmptyViewAssertion Setup_DeleteEveryCompanyResource_TestEmptyGetAll(ICompanyResourceDao da)
+		{
+			//Give the delete something to bite on, then clear the store out.
+			da.Insert(NewCompanyResource);
+			da.Insert(NewCompanyResource);
+
+			foreach (var pair in da.GetAll(null).ToList())
+				da.Delete(pair);
+
+			return (all) =>
+			{
+				//rule 5 - an empty list, and specifically not null
+				all.ShouldNotBeNull();
+				all.ShouldBeEmpty();
+			};
+		}
+
+		[Fact]
+		public void ShouldReturnAnEmptyListWhenNoCompanyResourcesAreStored()
+		{
+			//setup
+			var assertion = Setup_DeleteEveryCompanyResource_TestEmptyGetAll(_da);
+
+			//act
+			var all = _da.GetAll(new CompanyResource());
+
+			//assert
+			assertion(all);
+		}
+
+		#endregion
+
+		#region Snapshots - rule 9
+
+		/// <summary>
+		/// Rule 9, stated on its own rather than leaned on. Every count assertion in this class reads the
+		/// store through <c>GetAll</c>, so if that hands back the store's own list and the store's own
+		/// entities, a caller can silently rewrite the join table without ever calling <c>Insert</c> or
+		/// <c>Delete</c> - and no database-backed implementation could reproduce that, which is exactly
+		/// the interchangeability claim this repository makes.
+		/// </summary>
+		public delegate void SnapshotAssertion(IList<CompanyResource> refetched);
+		public static (CompanyResource CompanyResource, SnapshotAssertion Assert) Setup_InsertCompanyResource_TestGetAllReturnsSnapshots(ICompanyResourceDao da)
+		{
+			var pair = NewCompanyResource;
+			da.Insert(pair);
+
+			var companyId = pair.CompanyId;
+			var resourceId = pair.ResourceId;
+
+			var all = da.GetAll(null);
+			var countBefore = all.Count;
+
+			//Rewrite a join the list handed back, into a pair that names nothing stored.
+			var mine = all.Single(x => x.CompanyId == companyId && x.ResourceId == resourceId);
+			mine.CompanyId = NextCompanyId;
+			mine.ResourceId = Guid.NewGuid();
+			var rewrittenCompanyId = mine.CompanyId;
+			var rewrittenResourceId = mine.ResourceId;
+
+			//And rewrite the list itself. An implementation is free to return a fixed-size or otherwise
+			//unmodifiable list, and refusing the mutation honours rule 9 just as well as absorbing it - so
+			//this one throw is tolerated, and no other in this file is.
+			var added = new CompanyResource { CompanyId = NextCompanyId, ResourceId = Guid.NewGuid() };
+			try
+			{
+				all.Add(added);
+				all.Remove(mine);
+			}
+			catch (NotSupportedException)
+			{
+			}
+
+			return (pair, (refetched) =>
+			{
+				//rule 9 - two lists retrieved separately are independent of each other and of the store
+				refetched.ShouldNotBeNull();
+				refetched.ShouldNotBeSameAs(all);
+
+				//rule 9 - the store never saw any of it: same size, original pair intact, neither the
+				//rewritten pair nor the added one anywhere in sight
+				refetched.Count.ShouldBe(countBefore);
+				refetched.Count(x => x.CompanyId == companyId && x.ResourceId == resourceId).ShouldBe(1);
+				refetched.Any(x => x.CompanyId == rewrittenCompanyId && x.ResourceId == rewrittenResourceId).ShouldBeFalse();
+				refetched.Any(x => x.CompanyId == added.CompanyId && x.ResourceId == added.ResourceId).ShouldBeFalse();
+			}
+			);
+		}
+
+		[Fact]
+		public void ShouldNotStoreEditsMadeToTheListGetAllReturned()
+		{
+			//setup
+			var test = Setup_InsertCompanyResource_TestGetAllReturnsSnapshots(_da);
+
+			//act - neither Insert nor Delete is called between the edits and this read
+			var refetched = _da.GetAll(new CompanyResource());
+
+			//assert
+			test.Assert(refetched);
+		}
+
+		/// <summary>
+		/// Rule 9's other half. The test above proves a join coming <i>out</i> of the Data Access Layer is a
+		/// copy; this one proves a join going <i>in</i> is read rather than adopted. A Data Access Layer that
+		/// clones on read and then keeps the caller's own instance on write passes every other test in this
+		/// class, and lets a caller move a stored row from one pair to another without ever calling
+		/// <see cref="ICompanyResourceDao.Insert"/> or <see cref="ICompanyResourceDao.Delete"/>.
+		/// </summary>
+		public delegate void InsertAdoptionAssertion(CompanyResource rewritten);
+		public static (CompanyResource CompanyResource, InsertAdoptionAssertion Assert) Setup_CreateCompanyResource_TestInsertDoesNotAdoptTheArgument(ICompanyResourceDao da)
+		{
+			var pair = NewCompanyResource;
+			var companyId = pair.CompanyId;
+			var resourceId = pair.ResourceId;
+
+			return (pair, (rewritten) =>
+			{
+				//rule 9 - Insert read the pair as it stood at the moment of the call
+				CountMatching(da, new CompanyResource { CompanyId = companyId, ResourceId = resourceId }).ShouldBe(1);
+
+				//rule 9 - and the rewrite that followed it names a pair the store has never held
+				CountMatching(da, rewritten).ShouldBe(0);
+			}
+			);
+		}
+
+		[Fact]
+		public void ShouldNotStoreEditsMadeToACompanyResourceAfterInsertReturned()
+		{
+			//setup
+			var test = Setup_CreateCompanyResource_TestInsertDoesNotAdoptTheArgument(_da);
+
+			//act - the rewrite is deliberately after the call returns, so nothing about it may reach the store
+			_da.Insert(test.CompanyResource);
+			test.CompanyResource.CompanyId = NextCompanyId;
+			test.CompanyResource.ResourceId = Guid.NewGuid();
+
+			//assert
+			test.Assert(test.CompanyResource);
+		}
+
 		#endregion
 
 		#region Null arguments - rules 6, 7

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace ProphetsWay.Example.DataAccess.NoDB
 {
@@ -21,5 +22,28 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		public static readonly Dictionary<long, Transaction> Transactions = new Dictionary<long, Transaction>();
 
 		public static readonly Dictionary<Guid, Resource> Resources = new Dictionary<Guid, Resource>();
+
+		/// <summary>
+		/// Departments are soft-deleted, so nothing is ever taken out of here. A dictionary that is only ever
+		/// added to enumerates in insertion order, which is what gives rule 11 its stable ordering.
+		/// </summary>
+		public static readonly Dictionary<int, Department> Departments = new Dictionary<int, Department>();
+
+		/// <summary>
+		/// A <see cref="CompanyResource"/> has no identifier, so there is no key to hold it under - the natural
+		/// key is the (CompanyId, ResourceId) pair and matching is done by scanning for it.
+		/// </summary>
+		public static readonly List<CompanyResource> CompanyResources = new List<CompanyResource>();
+
+		private static int _lastDepartmentId;
+
+		/// <summary>
+		/// The generated surrogate key a real database would hand back from an identity column. Sequential
+		/// rather than random, so two inserts can never collide.
+		/// </summary>
+		public static int NextDepartmentId()
+		{
+			return Interlocked.Increment(ref _lastDepartmentId);
+		}
 	}
 }

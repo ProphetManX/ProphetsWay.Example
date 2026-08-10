@@ -24,7 +24,7 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldInsertGenericDepartment()
 		{
 			//setup
-			var test = DepartmentDaoTests.Setup_CreateDepartment_TestInsert();
+			var test = DepartmentDaoTests.Setup_CreateDepartment_TestInsert(_da);
 
 			//act
 			var window = StampWindow.Around(() => _da.Insert<Department>(test.Department));

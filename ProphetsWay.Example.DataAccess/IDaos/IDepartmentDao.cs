@@ -118,9 +118,11 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 	/// </para>
 	///
 	/// <para>
-	/// <b>17.</b> <c>Get</c> returns the department it found. Whether that is the instance the caller passed in,
-	/// populated in place, or a separate instance is unspecified — assert on the return value, never on the
-	/// argument.
+	/// <b>17.</b> <c>Get</c> returns the department it found as a snapshot under rule 19, never the stored
+	/// instance itself. Whether that snapshot is the instance the caller passed in, populated in place, or a
+	/// separate instance is unspecified — assert on the return value, never on the argument. Populating the
+	/// argument in place is permitted only because the argument belongs to the caller; it is never the store's
+	/// own object.
 	/// </para>
 	///
 	/// <para>
@@ -130,6 +132,18 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 	/// <c>Delete</c>. Local time is never used. Each stamped value has a <see cref="DateTime.Kind"/> of
 	/// <see cref="DateTimeKind.Utc"/>, both on the instance written back to the caller and on an instance later
 	/// retrieved by <c>Get</c>, <c>GetAll</c> or <c>GetPaged</c>.
+	/// </para>
+	///
+	/// <para>
+	/// <b>19.</b> An instance returned by <c>Get</c>, <c>GetAll</c> or <c>GetPaged</c> is a snapshot, and an
+	/// instance handed to <c>Insert</c>, <c>Update</c>, <c>Delete</c> or <see cref="Restore"/> is read rather
+	/// than adopted: mutating a returned instance does not change stored data, and mutating an argument after
+	/// the call returns does not reach the store. Stored data changes only through <c>Insert</c>,
+	/// <c>Update</c>, <c>Delete</c> and <see cref="Restore"/>, each of which reads its argument's values as
+	/// they stand at the moment of the call. Fetching a department, editing the fetched instance and then
+	/// calling <c>Update</c> therefore leaves the store untouched until that <c>Update</c> runs, and two
+	/// instances retrieved separately are independent of each other. The write-backs described by rules 1, 2,
+	/// 5 and 7 are the only values that travel from the store back onto a caller's instance.
 	/// </para>
 	///
 	/// <para><b>WHY.</b></para>
@@ -186,6 +200,17 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 	/// can only assert a wide sanity window, which a hardcoded date would pass. Coordinated Universal Time is
 	/// the default a Data Access Layer should demonstrate: local time repeats an hour and skips an hour every
 	/// year, so rows stamped across a daylight-saving boundary sort wrongly and cannot be ordered by time at all.
+	/// </para>
+	///
+	/// <para>
+	/// <b>Rule 19 is what makes this repository's central claim true.</b> A database hands back rows, not
+	/// object references. An in-memory store that hands back the object it is holding gives a caller a way to
+	/// change stored data that no database-backed implementation can reproduce, and the claim that the same
+	/// tests pass against either Data Access Layer would be quietly false. Stating the rule forces an
+	/// in-memory implementation to copy on read and on write, so a dictionary-backed store and a
+	/// database-backed one are genuinely interchangeable. It also gives the delete and restore assertions
+	/// their teeth: without it, a method that stamps only its argument and writes nothing passes, because the
+	/// assertion reads back the very object the method mutated.
 	/// </para>
 	/// </remarks>
 	public interface IDepartmentDao : IBaseGetAllDao<Department>, IBasePagedDao<Department>

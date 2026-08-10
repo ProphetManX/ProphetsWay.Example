@@ -60,6 +60,15 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 	/// which of the two is reported is unspecified. A test must assert on the exception <i>type</i> only.
 	/// </para>
 	///
+	/// <para>
+	/// <b>9.</b> The list <see cref="GetAll"/> returns and every join in it are snapshots, and a join handed to
+	/// <see cref="Insert"/> or <see cref="Delete"/> is read rather than adopted: mutating the returned list or
+	/// any entity in it does not change stored data, and mutating an argument after the call returns does not
+	/// reach the store. Stored data changes only through <see cref="Insert"/> and <see cref="Delete"/>, each of
+	/// which reads its argument's values as they stand at the moment of the call. Two lists retrieved
+	/// separately are independent of each other and of the store.
+	/// </para>
+	///
 	/// <para><b>WHY.</b></para>
 	///
 	/// <para>
@@ -92,6 +101,15 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 	/// the entity addressable by the generic dispatcher, it lets a single row be updated in place, and it stops
 	/// being optional the moment the join grows a field of its own. Reach for this shape only when you can say
 	/// why none of that matters.
+	/// </para>
+	///
+	/// <para>
+	/// <b>Rule 9 is what makes this repository's central claim true.</b> A database hands back rows, not object
+	/// references. An in-memory store that hands back the objects it is holding gives a caller a way to change
+	/// stored data that no database-backed implementation can reproduce, and the claim that the same tests pass
+	/// against either Data Access Layer would be quietly false. Stating the rule forces an in-memory
+	/// implementation to copy on read and on write, so a dictionary-backed store and a database-backed one are
+	/// genuinely interchangeable.
 	/// </para>
 	/// </remarks>
 	public interface ICompanyResourceDao
@@ -162,7 +180,8 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 		/// <para>
 		/// Treat the returned collection as read-only. The declared <see cref="IList{T}"/> permits
 		/// <c>Add</c> and <c>Remove</c>, but an implementation is free to return a fixed-size or otherwise
-		/// unmodifiable list, and mutating it never affects stored data.
+		/// unmodifiable list, and under rule 9 the list and the joins in it are snapshots, so mutating either
+		/// never affects stored data.
 		/// </para>
 		/// </remarks>
 		IList<CompanyResource> GetAll(CompanyResource item);

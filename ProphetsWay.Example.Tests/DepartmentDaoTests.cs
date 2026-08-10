@@ -39,7 +39,7 @@ namespace ProphetsWay.Example.Tests
 		#region Insert - rule 1
 
 		public delegate void InsertAssertion(Department dept, StampWindow window);
-		public static (Department Department, InsertAssertion Assert) Setup_CreateDepartment_TestInsert()
+		public static (Department Department, InsertAssertion Assert) Setup_CreateDepartment_TestInsert(IDepartmentDao da)
 		{
 			//Every field Insert owns is pre-loaded with a value Insert must overwrite.
 			var dept = NewDepartment;
@@ -47,6 +47,9 @@ namespace ProphetsWay.Example.Tests
 			dept.CreatedDate = BogusStamp;
 			dept.UpdatedDate = BogusStamp;
 			dept.DeletedDate = BogusStamp;
+
+			var name = dept.Name;
+			var description = dept.Description;
 
 			return (dept, (Department d, StampWindow window) =>
 			{
@@ -61,6 +64,22 @@ namespace ProphetsWay.Example.Tests
 				//rule 1 - the other two are cleared whatever the caller assigned
 				d.UpdatedDate.ShouldBeNull();
 				d.DeletedDate.ShouldBeNull();
+
+				//The write-back is only half of the rule. Everything above inspects the instance handed in, and an
+				//Insert that stamps its argument and persists nothing passes all of it - so fetch the department
+				//back and prove the row is really there.
+				var stored = da.Get(new Department { Id = d.Id });
+				stored.ShouldNotBeNull();
+				stored.Id.ShouldBe(d.Id);
+				stored.Name.ShouldBe(name);
+				stored.Description.ShouldBe(description);
+				stored.CreatedDate.ShouldBe(d.CreatedDate);
+				window.ShouldContainStamp(stored.CreatedDate);
+				stored.UpdatedDate.ShouldBeNull();
+				stored.DeletedDate.ShouldBeNull();
+
+				//rule 9 - a newly inserted department is live, so it is in the live views
+				da.GetAll(new Department()).Any(x => x.Id == d.Id).ShouldBeTrue();
 			}
 			);
 		}
@@ -69,13 +88,52 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldInsertDepartment()
 		{
 			//setup
-			var test = Setup_CreateDepartment_TestInsert();
+			var test = Setup_CreateDepartment_TestInsert(_da);
 
 			//act - the clock is read either side of the call, so rule 18's stamp is bounded by the call itself
 			var window = StampWindow.Around(() => _da.Insert(test.Department));
 
 			//assert
 			test.Assert(test.Department, window);
+		}
+
+		/// <summary>
+		/// Rule 1's word <i>generated</i>, which nothing else in this class pins down. Every other insert
+		/// assertion is satisfied by an implementation that assigns the same constant every time, and the
+		/// resulting collision only surfaces later as a department that has mysteriously become another one.
+		/// </summary>
+		public delegate void DistinctIdAssertion(Department first, Department second);
+		public static (Department First, Department Second, DistinctIdAssertion Assert) Setup_CreateTwoDepartments_TestDistinctIds(IDepartmentDao da)
+		{
+			var first = NewDepartment;
+			var second = NewDepartment;
+
+			return (first, second, (a, b) =>
+			{
+				//rule 1 - each Insert generates an identifier of its own
+				a.Id.ShouldNotBe(default);
+				b.Id.ShouldNotBe(default);
+				b.Id.ShouldNotBe(a.Id);
+
+				//and the two identifiers address two different rows, rather than one row twice
+				da.Get(new Department { Id = a.Id }).Name.ShouldBe(a.Name);
+				da.Get(new Department { Id = b.Id }).Name.ShouldBe(b.Name);
+			}
+			);
+		}
+
+		[Fact]
+		public void ShouldAssignADistinctIdToEachInsertedDepartment()
+		{
+			//setup
+			var test = Setup_CreateTwoDepartments_TestDistinctIds(_da);
+
+			//act
+			_da.Insert(test.First);
+			_da.Insert(test.Second);
+
+			//assert
+			test.Assert(test.First, test.Second);
 		}
 
 		#endregion
@@ -166,6 +224,190 @@ namespace ProphetsWay.Example.Tests
 
 		#endregion
 
+		#region Snapshots - rule 19
+
+		/// <summary>
+		/// Rule 19, stated on its own rather than leaned on. Every other assertion in this class that reads a
+		/// department back is only as strong as this one: if <c>Get</c> hands out the store's own instance,
+		/// then a <c>Delete</c> that stamps its argument and writes nothing to the store passes, because the
+		/// assertion reads back the very object the call just mutated. Nothing is passed to <c>Update</c> here
+		/// - the whole point is that an edit nobody submitted cannot reach the store.
+		/// </summary>
+		public delegate void SnapshotAssertion(Department refetched, IList<Department> all);
+		public static (int DepartmentId, SnapshotAssertion Assert) Setup_InsertDepartment_TestRetrievedInstanceIsASnapshot(IDepartmentDao da)
+		{
+			var dept = NewDepartment;
+			var insertWindow = StampWindow.Around(() => da.Insert(dept));
+			var name = dept.Name;
+			var description = dept.Description;
+			var createdDate = dept.CreatedDate;
+
+			//A caller fetches a department, edits every field it can reach - including the two stamps it has no
+			//business setting - and never calls Update.
+			var edited = da.Get(new Department { Id = dept.Id });
+			edited.Name = "Renamed on a retrieved instance.";
+			edited.Description = "Edited on a retrieved instance that was never handed back to Update.";
+			edited.CreatedDate = BogusStamp;
+			edited.UpdatedDate = BogusStamp;
+			edited.DeletedDate = BogusStamp;
+
+			return (dept.Id, (refetched, all) =>
+			{
+				//rule 19 - two separately retrieved instances are independent of each other, which a Data
+				//Access Layer handing out its own object cannot be
+				refetched.ShouldNotBeNull();
+				refetched.ShouldNotBeSameAs(edited);
+
+				//rule 19 - and none of the edits above reached the store
+				refetched.Name.ShouldBe(name);
+				refetched.Description.ShouldBe(description);
+				refetched.CreatedDate.ShouldNotBe(BogusStamp);
+				refetched.CreatedDate.ShouldBe(createdDate);
+				insertWindow.ShouldContainStamp(refetched.CreatedDate);
+				refetched.UpdatedDate.ShouldBeNull();
+
+				//rule 19 - in particular, assigning DeletedDate on a retrieved instance does not delete anything
+				refetched.DeletedDate.ShouldBeNull();
+				all.Any(x => x.Id == dept.Id).ShouldBeTrue();
+			}
+			);
+		}
+
+		[Fact]
+		public void ShouldNotStoreEditsMadeToARetrievedDepartment()
+		{
+			//setup
+			var test = Setup_InsertDepartment_TestRetrievedInstanceIsASnapshot(_da);
+
+			//act - no write of any kind happens between the setup's edit and these reads
+			var refetched = _da.Get(new Department { Id = test.DepartmentId });
+			var all = _da.GetAll(new Department());
+
+			//assert
+			test.Assert(refetched, all);
+		}
+
+		/// <summary>
+		/// Every field a caller can reach, rewritten on an instance the caller has <i>already</i> handed to the
+		/// Data Access Layer. Under rule 19 none of it may reach the store, because the call it was an argument to
+		/// has already returned. <see cref="Entities.BaseIntEntity.Id"/> is left alone so that the assertion still
+		/// has an identifier to fetch the row back by.
+		/// </summary>
+		public static void EditEveryFieldAfterTheCall(Department dept)
+		{
+			dept.Name = "Renamed after the call returned.";
+			dept.Description = "Edited after the call returned.";
+			dept.CreatedDate = BogusStamp;
+			dept.UpdatedDate = BogusStamp;
+			dept.DeletedDate = BogusStamp;
+		}
+
+		/// <summary>
+		/// Rule 19's other half, on <c>Insert</c>. The snapshot test above proves a department coming <i>out</i> of
+		/// the Data Access Layer is a copy; this one proves a department going <i>in</i> is read rather than
+		/// adopted. A Data Access Layer that clones on read and then stores the caller's own instance passes every
+		/// other test in this class - it is the natural half-measure of an implementer who adds copying to
+		/// <c>Get</c> and stops there - and it silently restores the aliasing that rule 19 exists to forbid.
+		/// </summary>
+		public delegate void InsertAdoptionAssertion(int departmentId);
+		public static (Department Department, InsertAdoptionAssertion Assert) Setup_CreateDepartment_TestInsertDoesNotAdoptTheArgument(IDepartmentDao da)
+		{
+			var dept = NewDepartment;
+			var name = dept.Name;
+			var description = dept.Description;
+
+			return (dept, (departmentId) =>
+			{
+				var stored = da.Get(new Department { Id = departmentId });
+				stored.ShouldNotBeNull();
+
+				//rule 19 - Insert read the values as they stood at the moment of the call, and the rewrite that
+				//followed it reached nothing
+				stored.Name.ShouldBe(name);
+				stored.Description.ShouldBe(description);
+
+				//rule 19 - including the three stamps, so CreatedDate is still the one Insert stamped and the
+				//department has been neither updated nor deleted by an edit nobody submitted
+				stored.CreatedDate.ShouldNotBe(BogusStamp);
+				StampWindow.ShouldBeUtcStamp(stored.CreatedDate);
+				stored.UpdatedDate.ShouldBeNull();
+				stored.DeletedDate.ShouldBeNull();
+
+				//rule 9 - and "still live" is asserted where it is observable, not only on the stamp
+				da.GetAll(new Department()).Any(x => x.Id == departmentId).ShouldBeTrue();
+			}
+			);
+		}
+
+		[Fact]
+		public void ShouldNotStoreEditsMadeToADepartmentAfterInsertReturned()
+		{
+			//setup
+			var test = Setup_CreateDepartment_TestInsertDoesNotAdoptTheArgument(_da);
+
+			//act - the identifier is captured before the rewrite, because after it the instance no longer
+			//describes anything the store holds
+			_da.Insert(test.Department);
+			var departmentId = test.Department.Id;
+			EditEveryFieldAfterTheCall(test.Department);
+
+			//assert
+			test.Assert(departmentId);
+		}
+
+		/// <summary>
+		/// Rule 19's write half on <c>Update</c>, which is where adopting the argument does the most damage: the
+		/// instance a caller hands to <c>Update</c> is usually one it keeps working with afterwards, so a store
+		/// holding that reference goes on absorbing edits nobody submitted for as long as the caller holds it.
+		/// </summary>
+		public delegate void UpdateAdoptionAssertion(int count);
+		public static (Department Department, UpdateAdoptionAssertion Assert) Setup_InsertDepartment_TestUpdateDoesNotAdoptTheArgument(IDepartmentDao da)
+		{
+			var dept = NewDepartment;
+			da.Insert(dept);
+			var createdDate = dept.CreatedDate;
+
+			//An ordinary fetch-edit-submit, so that the Update has a legitimate change to land. Only what the
+			//caller does to this instance after the call returns is the point.
+			var edit = da.Get(new Department { Id = dept.Id });
+			edit.Description = "Edited before the Update, which is the edit that is supposed to land.";
+
+			return (edit, (count) =>
+			{
+				count.ShouldBe(1);
+
+				var stored = da.Get(new Department { Id = dept.Id });
+
+				//rule 2 - the edit submitted before the call did land, so "nothing changed" is not how this passes
+				stored.Description.ShouldBe("Edited before the Update, which is the edit that is supposed to land.");
+				StampWindow.ShouldBeUtcStamp(stored.UpdatedDate);
+				stored.UpdatedDate.Value.ShouldNotBe(BogusStamp);
+
+				//rule 19 - and none of the rewriting done after the call did
+				stored.Name.ShouldBe(dept.Name);
+				stored.CreatedDate.ShouldBe(createdDate);
+				stored.DeletedDate.ShouldBeNull();
+				da.GetAll(new Department()).Any(x => x.Id == dept.Id).ShouldBeTrue();
+			}
+			);
+		}
+
+		[Fact]
+		public void ShouldNotStoreEditsMadeToADepartmentAfterUpdateReturned()
+		{
+			//setup
+			var test = Setup_InsertDepartment_TestUpdateDoesNotAdoptTheArgument(_da);
+
+			//act
+			var count = _da.Update(test.Department);
+			EditEveryFieldAfterTheCall(test.Department);
+
+			//assert
+			test.Assert(count);
+		}
+
+		#endregion
+
 		#region Update - rules 2, 3, 4
 
 		public delegate void UpdateAssertion(int count, StampWindow window);
@@ -221,6 +463,12 @@ namespace ProphetsWay.Example.Tests
 		/// apart, so this is the test that has to do it - and whole-object replacement is the house pattern in
 		/// this repository, so it is what an implementer reaches for first.
 		/// </summary>
+		/// <remarks>
+		/// Rule 19 is what makes this setup mean anything. The instance being poisoned came out of <c>Get</c>, so
+		/// under a Data Access Layer that handed back its own object the store would already carry
+		/// <see cref="BogusStamp"/> before <c>Update</c> was ever called, and the test would be asserting against
+		/// damage it caused itself.
+		/// </remarks>
 		public delegate void LivePreservationAssertion(int count, StampWindow window);
 		public static (Department Department, LivePreservationAssertion Assert) Setup_InsertDepartment_TestUpdatePreservesStoredCreatedDate(IDepartmentDao da)
 		{
@@ -276,6 +524,12 @@ namespace ProphetsWay.Example.Tests
 		/// whole-object replacement, which wipes <see cref="Department.DeletedDate"/> the moment a caller
 		/// passes an instance it fetched before the delete. This is that caller.
 		/// </summary>
+		/// <remarks>
+		/// Rule 19 is what makes this setup mean anything - see
+		/// <see cref="Setup_InsertDepartment_TestUpdatePreservesStoredCreatedDate"/>. The stale instance is
+		/// fetched while the department is live and then edited; only because a retrieved instance is a snapshot
+		/// does the store still hold the delete stamp by the time <c>Update</c> runs.
+		/// </remarks>
 		public delegate void PreservationAssertion(int count, StampWindow window);
 		public static (Department Department, PreservationAssertion Assert) Setup_DeleteDepartment_TestUpdatePreservesStoredStamps(IDepartmentDao da)
 		{
@@ -336,6 +590,127 @@ namespace ProphetsWay.Example.Tests
 			test.Assert(count, window);
 		}
 
+		/// <summary>
+		/// Rule 3 in the direction the setup above cannot reach. That one poisons
+		/// <see cref="Department.DeletedDate"/> with <c>null</c> on a row that is deleted; this one poisons it
+		/// with a value on a row that is live. Both cells have to be filled, because an implementation written as
+		/// <c>stored.DeletedDate = item.DeletedDate ?? stored.DeletedDate;</c> satisfies the first and turns
+		/// <c>Update</c> into a second, undocumented way to soft-delete a department - with whatever junk stamp
+		/// the caller happened to be carrying, and bypassing <c>Delete</c> entirely.
+		/// </summary>
+		public delegate void NoDeleteThroughUpdateAssertion(int count, StampWindow window);
+		public static (Department Department, NoDeleteThroughUpdateAssertion Assert) Setup_InsertDepartment_TestUpdateCannotSoftDeleteALiveDepartment(IDepartmentDao da)
+		{
+			var dept = NewDepartment;
+			da.Insert(dept);
+
+			//A live row, fetched exactly as a caller would fetch it, then poisoned in the one stamp only Delete
+			//may write.
+			var edit = da.Get(new Department { Id = dept.Id });
+			edit.Description = "Edited from a live instance carrying a bogus DeletedDate.";
+			edit.DeletedDate = BogusStamp;
+
+			return (edit, (count, window) =>
+			{
+				count.ShouldBe(1);
+
+				var stored = da.Get(new Department { Id = dept.Id });
+
+				//rule 3 - the department's own data is written
+				stored.Description.ShouldBe("Edited from a live instance carrying a bogus DeletedDate.");
+
+				//rule 2 - and the update itself really happened, so "nothing changed" is not how this passes
+				window.ShouldContainStamp(stored.UpdatedDate);
+
+				//rule 3 - an incoming DeletedDate is ignored in this direction too. Delete is the only way in.
+				stored.DeletedDate.ShouldBeNull();
+
+				//rule 9 - and "still live" is asserted where it is observable, not only on the stamp
+				var all = da.GetAll(new Department());
+				all.Any(x => x.Id == dept.Id).ShouldBeTrue();
+				da.GetCount(new Department()).ShouldBe(all.Count);
+				da.GetPaged(new Department(), 0, all.Count).Any(x => x.Id == dept.Id).ShouldBeTrue();
+			}
+			);
+		}
+
+		[Fact]
+		public void ShouldNotSoftDeleteALiveDepartmentThroughUpdate()
+		{
+			//setup
+			var test = Setup_InsertDepartment_TestUpdateCannotSoftDeleteALiveDepartment(_da);
+
+			//act
+			var window = StampWindow.Around(() => _da.Update(test.Department), out int count);
+
+			//assert
+			test.Assert(count, window);
+		}
+
+		/// <summary>
+		/// The last cell of rule 3's matrix - {live, deleted} x {null, non-null} - and the only one no other test
+		/// reaches. A deleted department updated with a bogus <i>value</i> in
+		/// <see cref="Department.DeletedDate"/>: an implementation written as
+		/// <c>if (item.DeletedDate.HasValue &amp;&amp; stored.DeletedDate.HasValue) stored.DeletedDate = item.DeletedDate;</c>
+		/// satisfies the other three and turns <c>Update</c> into a way to rewrite a deletion timestamp, leaving
+		/// the row lying about when it was deleted - the same harm rule 6's "is not refreshed" forbids, arriving
+		/// through a different door.
+		/// </summary>
+		public delegate void DeletedStampPreservationAssertion(int count, StampWindow window);
+		public static (Department Department, DeletedStampPreservationAssertion Assert) Setup_DeleteDepartment_TestUpdateCannotRewriteTheDeletedDate(IDepartmentDao da)
+		{
+			var dept = NewDepartment;
+			da.Insert(dept);
+			var deleteWindow = StampWindow.Around(() => da.Delete(dept), out int _);
+			var deletedDate = da.Get(new Department { Id = dept.Id }).DeletedDate;
+			deleteWindow.ShouldContainStamp(deletedDate);
+
+			//A deleted row, fetched exactly as a caller would fetch it, then poisoned in the one stamp only Delete
+			//may write - with a value rather than with null, which is the direction nothing else covers.
+			var edit = da.Get(new Department { Id = dept.Id });
+			edit.Description = "Edited from a deleted instance carrying a bogus DeletedDate.";
+			edit.DeletedDate = BogusStamp;
+
+			return (edit, (count, window) =>
+			{
+				//rule 4 - updating a soft-deleted department is allowed
+				count.ShouldBe(1);
+
+				var stored = da.Get(new Department { Id = dept.Id });
+
+				//rule 3 - the department's own data is written, so "nothing happened" is not how this passes
+				stored.Description.ShouldBe("Edited from a deleted instance carrying a bogus DeletedDate.");
+
+				//rule 2 - and the update itself really ran
+				window.ShouldContainStamp(stored.UpdatedDate);
+
+				//rule 3 - the incoming DeletedDate is ignored here too, so the row still reports when it was
+				//actually deleted
+				stored.DeletedDate.ShouldNotBe(BogusStamp);
+				stored.DeletedDate.ShouldBe(deletedDate);
+				deleteWindow.ShouldContainStamp(stored.DeletedDate);
+
+				//rule 4 - and it stays deleted
+				var all = da.GetAll(new Department());
+				all.Any(x => x.Id == dept.Id).ShouldBeFalse();
+				da.GetCount(new Department()).ShouldBe(all.Count);
+			}
+			);
+		}
+
+		[Fact]
+		public void ShouldNotRewriteTheDeletedDateOfASoftDeletedDepartmentThroughUpdate()
+		{
+			//setup
+			var test = Setup_DeleteDepartment_TestUpdateCannotRewriteTheDeletedDate(_da);
+
+			//act
+			var window = StampWindow.Around(() => _da.Update(test.Department), out int count);
+
+			//assert
+			test.Assert(count, window);
+		}
+
 		[Fact]
 		public void ShouldRestampUpdatedDateOnEveryUpdate()
 		{
@@ -387,6 +762,19 @@ namespace ProphetsWay.Example.Tests
 			var insertWindow = StampWindow.Around(() => da.Insert(dept));
 			var createdDate = dept.CreatedDate;
 
+			//The department is modified before it is deleted, so that rule 5's "UpdatedDate is not touched" has
+			//something to be true of. On a department that was never updated the field is null either way, and a
+			//Delete written as a whole-object write - which erases modification history - passes unnoticed.
+			dept.Description = "Edited before the delete, so the delete has a stamp to preserve.";
+			da.Update(dept);
+			var updatedDate = da.Get(new Department { Id = dept.Id }).UpdatedDate;
+			StampWindow.ShouldBeUtcStamp(updatedDate);
+
+			//Let the clock move, so a Delete that re-stamped UpdatedDate would write a different value than the
+			//one captured above. Without this the two calls can read the same tick and the assertion cannot tell
+			//"preserved" from "rewritten". Same DateTime resolution problem as the second-delete setup below.
+			Thread.Sleep(ClockTickMs);
+
 			return (dept, (count, window) =>
 			{
 				count.ShouldBe(1);
@@ -401,7 +789,8 @@ namespace ProphetsWay.Example.Tests
 				window.ShouldContainStamp(stored.DeletedDate);
 				stored.CreatedDate.ShouldBe(createdDate);
 				insertWindow.ShouldContainStamp(stored.CreatedDate);
-				stored.UpdatedDate.ShouldBeNull();
+				stored.UpdatedDate.ShouldBe(updatedDate);
+				stored.Description.ShouldBe("Edited before the delete, so the delete has a stamp to preserve.");
 
 				//rule 9 - and it is gone from every live view
 				var all = da.GetAll(new Department());
@@ -490,7 +879,20 @@ namespace ProphetsWay.Example.Tests
 			var dept = NewDepartment;
 			var insertWindow = StampWindow.Around(() => da.Insert(dept));
 			var createdDate = dept.CreatedDate;
+
+			//Modified before it is deleted, so that "Restore stamps nothing else" is asserted against a value
+			//rather than against null. A Restore written as a whole-object write erases UpdatedDate, and on a
+			//department that was never updated nothing notices.
+			dept.Description = "Edited before the delete, so the restore has a stamp to preserve.";
+			da.Update(dept);
+			var updatedDate = da.Get(new Department { Id = dept.Id }).UpdatedDate;
+			StampWindow.ShouldBeUtcStamp(updatedDate);
+
 			da.Delete(dept);
+
+			//Let the clock move, so a Restore that wrongly re-stamped UpdatedDate would write a value different
+			//from the one captured above. DateTime resolution, not test isolation.
+			Thread.Sleep(ClockTickMs);
 
 			return (dept, (count) =>
 			{
@@ -502,10 +904,12 @@ namespace ProphetsWay.Example.Tests
 				var stored = da.Get(new Department { Id = dept.Id });
 				stored.DeletedDate.ShouldBeNull();
 
-				//a restore is a lifecycle change, not a modification - it stamps nothing else
-				stored.UpdatedDate.ShouldBeNull();
+				//a restore is a lifecycle change, not a modification - it stamps nothing else, and it erases
+				//nothing either
+				stored.UpdatedDate.ShouldBe(updatedDate);
 				stored.CreatedDate.ShouldBe(createdDate);
 				insertWindow.ShouldContainStamp(stored.CreatedDate);
+				stored.Description.ShouldBe("Edited before the delete, so the restore has a stamp to preserve.");
 
 				//and the department is back in the live views
 				var all = da.GetAll(new Department());
@@ -582,10 +986,32 @@ namespace ProphetsWay.Example.Tests
 				all.Any(x => x.Id == deleted.Id).ShouldBeFalse();
 				all.All(x => x.DeletedDate == null).ShouldBeTrue();
 
+				//rule 18 - the Kind survives this retrieval too, not only a Get. A projection into fresh
+				//instances - the ordinary shape of a SQL-backed Data Access Layer - drops it here first.
+				AssertEveryStampIsUtc(all);
+
 				//rule 9 - GetCount agrees with GetAll exactly
 				count.ShouldBe(all.Count);
 			}
 			);
+		}
+
+		/// <summary>
+		/// Rule 18 across a whole retrieved set. Every department in the store arrived through <c>Insert</c>, so
+		/// every one of them carries stamps this can be asserted on.
+		/// </summary>
+		public static void AssertEveryStampIsUtc(IEnumerable<Department> departments)
+		{
+			foreach (var dept in departments)
+			{
+				StampWindow.ShouldBeUtcStamp(dept.CreatedDate);
+
+				if (dept.UpdatedDate.HasValue)
+					StampWindow.ShouldBeUtcStamp(dept.UpdatedDate);
+
+				if (dept.DeletedDate.HasValue)
+					StampWindow.ShouldBeUtcStamp(dept.DeletedDate);
+			}
 		}
 
 		[Fact]
@@ -693,6 +1119,9 @@ namespace ProphetsWay.Example.Tests
 				pagedTogether.Count.ShouldBe(all.Count);
 				pagedTogether.Select(x => x.Id).Distinct().Count().ShouldBe(all.Count);
 				pagedTogether.Select(x => x.Id).OrderBy(x => x).ShouldBe(all.Select(x => x.Id).OrderBy(x => x));
+
+				//rule 18 - a paged department carries the same Coordinated Universal Time stamps as any other
+				AssertEveryStampIsUtc(pagedTogether);
 			}
 			);
 		}
@@ -840,39 +1269,49 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldNotThrowWhenGetAllIsGivenNull()
 		{
 			//setup
-			Setup_InsertDepartment_TestGet(_da);
+			var test = Setup_InsertDepartment_TestGet(_da);
+			var selected = _da.GetAll(new Department());
 
 			//act - rule 13, this is exactly how the generic dispatcher calls it
 			var all = _da.GetAll(null);
 
-			//assert
+			//assert - rule 13 says the selector is never read, so the two calls have to agree exactly. "Did not
+			//throw" is satisfied by returning an empty list, which is why the set itself is compared.
 			all.ShouldNotBeNull();
+			all.Any(x => x.Id == test.DepartmentId).ShouldBeTrue();
+			all.Select(x => x.Id).OrderBy(x => x).ShouldBe(selected.Select(x => x.Id).OrderBy(x => x));
 		}
 
 		[Fact]
 		public void ShouldNotThrowWhenGetPagedIsGivenNull()
 		{
 			//setup
-			Setup_InsertDepartment_TestGet(_da);
+			var test = Setup_InsertDepartment_TestGet(_da);
+			var all = _da.GetAll(new Department());
 
 			//act - rule 13
-			var page = _da.GetPaged(null, 0, 1);
+			var page = _da.GetPaged(null, 0, all.Count);
 
-			//assert
+			//assert - a full window with a null selector is the whole live set, in the order rule 11 fixes
 			page.ShouldNotBeNull();
+			page.Count.ShouldBe(all.Count);
+			page.Any(x => x.Id == test.DepartmentId).ShouldBeTrue();
+			page.Select(x => x.Id).ShouldBe(all.Select(x => x.Id));
 		}
 
 		[Fact]
 		public void ShouldNotThrowWhenGetCountIsGivenNull()
 		{
 			//setup
-			Setup_InsertDepartment_TestGet(_da);
+			var test = Setup_InsertDepartment_TestGet(_da);
+			var all = _da.GetAll(new Department());
+			all.Any(x => x.Id == test.DepartmentId).ShouldBeTrue();
 
 			//act - rule 13
 			var count = _da.GetCount(null);
 
-			//assert
-			count.ShouldBeGreaterThanOrEqualTo(1);
+			//assert - rule 9, the count with a null selector is the count of the live set and nothing looser
+			count.ShouldBe(all.Count);
 		}
 
 		#endregion
