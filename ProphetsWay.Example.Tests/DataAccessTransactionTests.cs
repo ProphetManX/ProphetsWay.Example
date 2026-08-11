@@ -1,6 +1,5 @@
 using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
-using ProphetsWay.Example.DataAccess.NoDB;
 using Shouldly;
 using System;
 using System.Linq;
@@ -24,14 +23,18 @@ namespace ProphetsWay.Example.Tests
 	/// two of them share one fate.
 	/// </para>
 	/// <para>
-	/// <b>Why this class joins <see cref="TestCollections.CoreEntities"/>.</b> It writes Department and Company
-	/// rows and asserts over whole-set counts, which is the same reason every other class in that collection is
-	/// in it. It matters more here than elsewhere: a rollback removes rows and a disposal rolls one back, so this
-	/// is the most destructive class in the suite, and it must never run beside another class reading the types
-	/// it is unwinding. Both types it touches already live in that collection, so nothing about the existing
-	/// grouping has to change and <see cref="TestCollections.CompanyResources"/> still runs in parallel
-	/// untouched. <b>Keep it that way</b> - reaching for <see cref="CompanyResource"/> in a transaction test
-	/// would drag the two collections into one and cost the suite that parallelism.
+	/// <b>Why this class joins <see cref="TestCollections.SharedStore"/>, and why that is now the only group
+	/// there is.</b> It writes Department and Company rows and asserts over whole-set counts while doing it,
+	/// which is the same reason every other class reaching the store is in it. It matters more here than
+	/// elsewhere: a rollback removes rows and a disposal rolls one back, so this is the most destructive class
+	/// in the suite, and it must never run beside another class reading the types it is unwinding.
+	/// <see cref="CompanyResource"/> used to run in parallel with it, on the strength of naming company and
+	/// resource identifiers that no row was ever created for. Rule 10 on
+	/// <see cref="DataAccess.IDaos.ICompanyResourceDao"/> ended that, and the assertions in this class are what
+	/// it collides with: <c>Setup_TransactionWritingTwoEntityTypes_TestCommitPersistsBoth</c> reads
+	/// <c>GetCount&lt;Company&gt;()</c> before the transaction opens and asserts <c>+ 1</c> afterwards, and its
+	/// rollback counterpart asserts the count is unchanged. A <see cref="Company"/> inserted by a join test on
+	/// another thread breaks both, intermittently and only in a full run.
 	/// </para>
 	/// <para>
 	/// <b>Reads are done through a second instance.</b> "Persisted" and "discarded" are claims about the store,
@@ -45,16 +48,16 @@ namespace ProphetsWay.Example.Tests
 	/// and it is an accepted limitation of an in-memory store rather than a rule of <c>IBaseDataAccess</c>, which
 	/// specifies no isolation level at all. It is pinned because this repository is read as documentation: an
 	/// unwritten limitation leaves a reader unable to tell an accepted tradeoff from a bug, and the test states
-	/// which it is in the one place a reader will believe. If isolation is ever added, that test fails - which is
-	/// the correct outcome, because a change of isolation level is a change of behaviour a reader must be told
-	/// about, and the failure sends whoever made it back to this comment.
+	/// which it is in the one place a reader will believe. It is the one test in this class carrying
+	/// <c>Scope=Characterization</c> rather than <c>Scope=Contract</c>, which is why the traits here are on the
+	/// methods rather than on the class. If isolation is ever added, that test fails - which is the correct
+	/// outcome, because a change of isolation level is a change of behaviour a reader must be told about, and
+	/// the failure sends whoever made it back to this comment.
 	/// </para>
 	/// </remarks>
-	[Collection(TestCollections.CoreEntities)]
+	[Collection(TestCollections.SharedStore)]
 	public class DataAccessTransactionTests : BaseUnitTests<IExampleDataAccess>
 	{
-		protected override IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();
-
 		public static Company NewCompany => CompanyDaoTests.NewCompany;
 
 		public static Department NewDepartment => DepartmentDaoTests.NewDepartment;
@@ -79,6 +82,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldThrowWhenATransactionIsStartedWhileOneIsOpen()
 		{
 			//setup
@@ -108,6 +112,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldThrowWhenCommittingWithNoTransactionOpen()
 		{
 			//setup
@@ -118,6 +123,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldThrowWhenRollingBackWithNoTransactionOpen()
 		{
 			//setup
@@ -175,26 +181,28 @@ namespace ProphetsWay.Example.Tests
 		[Theory]
 		[InlineData(true)]
 		[InlineData(false)]
+		[Trait("Scope", "Contract")]
 		public void ShouldThrowWhenCommittingAfterTheTransactionIsClosed(bool closedByCommit)
 		{
 			//setup
 			var test = Setup_ClosedTransaction_TestASecondEnderThrows(_da, closedByCommit);
 
 			//act & assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(() => _da.TransactionCommit(), reader);
 		}
 
 		[Theory]
 		[InlineData(true)]
 		[InlineData(false)]
+		[Trait("Scope", "Contract")]
 		public void ShouldThrowWhenRollingBackAfterTheTransactionIsClosed(bool closedByCommit)
 		{
 			//setup
 			var test = Setup_ClosedTransaction_TestASecondEnderThrows(_da, closedByCommit);
 
 			//act & assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(() => _da.TransactionRollBack(), reader);
 		}
 
@@ -206,6 +214,7 @@ namespace ProphetsWay.Example.Tests
 		[Theory]
 		[InlineData(true)]
 		[InlineData(false)]
+		[Trait("Scope", "Contract")]
 		public void ShouldOpenANewTransactionOnceTheLastOneIsClosed(bool closedByCommit)
 		{
 			//setup
@@ -262,6 +271,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldPersistEveryEntityTypeWrittenInACommittedTransaction()
 		{
 			//setup
@@ -271,7 +281,7 @@ namespace ProphetsWay.Example.Tests
 			_da.TransactionCommit();
 
 			//assert - read through an instance that had no part in writing them
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -305,6 +315,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldDiscardEveryEntityTypeWrittenInARolledBackTransaction()
 		{
 			//setup
@@ -314,7 +325,7 @@ namespace ProphetsWay.Example.Tests
 			_da.TransactionRollBack();
 
 			//assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -361,6 +372,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldRestoreUpdatedAndDeletedRowsWhenTheTransactionIsRolledBack()
 		{
 			//setup
@@ -370,7 +382,7 @@ namespace ProphetsWay.Example.Tests
 			_da.TransactionRollBack();
 
 			//assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -403,6 +415,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldLeaveWorkDoneOutsideATransactionAloneWhenALaterTransactionIsRolledBack()
 		{
 			//setup
@@ -415,7 +428,7 @@ namespace ProphetsWay.Example.Tests
 			_da.TransactionRollBack();
 
 			//assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -453,10 +466,11 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldNotEnrolAnotherInstancesWorkInThisInstancesTransaction()
 		{
 			//setup
-			using (var other = new ExampleDataAccess())
+			using (var other = TestDataAccessFactory.Create())
 			{
 				var test = Setup_TwoInstancesWriting_TestRollBackTouchesOnlyItsOwn(_da, other);
 
@@ -464,7 +478,7 @@ namespace ProphetsWay.Example.Tests
 				_da.TransactionRollBack();
 
 				//assert
-				using (var reader = new ExampleDataAccess())
+				using (var reader = TestDataAccessFactory.Create())
 					test.Assert(reader);
 			}
 		}
@@ -475,12 +489,13 @@ namespace ProphetsWay.Example.Tests
 		/// static, or on the shared store - fails both halves of this.
 		/// </summary>
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldTrackTransactionStateOnEachInstanceSeparately()
 		{
 			//setup
 			_da.TransactionStart();
 
-			using (var other = new ExampleDataAccess())
+			using (var other = TestDataAccessFactory.Create())
 			{
 				//act & assert - the other instance has nothing open, whatever this one is doing
 				Should.Throw<InvalidOperationException>(() => other.TransactionCommit());
@@ -500,25 +515,27 @@ namespace ProphetsWay.Example.Tests
 		#region Disposal rolls back, never commits
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldRollBackAnOpenTransactionWhenDisposed()
 		{
 			//setup - a separate instance, because this test is about what disposing one does
-			var writer = new ExampleDataAccess();
+			var writer = TestDataAccessFactory.Create();
 			var test = Setup_TransactionWritingTwoEntityTypes_TestRollBackDiscardsBoth(writer);
 
 			//act - an unclosed transaction is an abandoned one, and Dispose never throws even while unwinding it
 			Should.NotThrow(() => writer.Dispose());
 
 			//assert - the same assertion the explicit rollback makes, because that is what disposal owes
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldThrowWhenTransactionStartIsCalledAfterDispose()
 		{
 			//setup
-			var da = new ExampleDataAccess();
+			var da = TestDataAccessFactory.Create();
 			da.Dispose();
 
 			//act & assert
@@ -526,10 +543,11 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldThrowWhenTransactionCommitIsCalledAfterDispose()
 		{
 			//setup
-			var da = new ExampleDataAccess();
+			var da = TestDataAccessFactory.Create();
 			da.Dispose();
 
 			//act & assert - ObjectDisposedException, not the InvalidOperationException a closed transaction
@@ -538,10 +556,11 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldThrowWhenTransactionRollBackIsCalledAfterDispose()
 		{
 			//setup
-			var da = new ExampleDataAccess();
+			var da = TestDataAccessFactory.Create();
 			da.Dispose();
 
 			//act & assert
@@ -562,9 +581,12 @@ namespace ProphetsWay.Example.Tests
 		/// <remarks>
 		/// This is a characterization test of the implementation, not a rule of <c>IBaseDataAccess</c> - that
 		/// contract specifies no isolation level. It is written down because the alternative is a reader finding
-		/// the behaviour on their own and being unable to tell an accepted tradeoff from a defect.
+		/// the behaviour on their own and being unable to tell an accepted tradeoff from a defect. A Data Access
+		/// Layer over a store that does provide isolation fails this test <i>correctly</i>, which is what
+		/// <c>Scope=Characterization</c> is for.
 		/// </remarks>
 		[Fact]
+		[Trait("Scope", "Characterization")]
 		public void ShouldExposeUncommittedWritesToAnotherInstance()
 		{
 			//setup
@@ -574,7 +596,7 @@ namespace ProphetsWay.Example.Tests
 			_da.Insert(dept);
 
 			//act & assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 			{
 				//no isolation: the row is already there, uncommitted
 				reader.Get(new Department { Id = dept.Id }).ShouldNotBeNull();

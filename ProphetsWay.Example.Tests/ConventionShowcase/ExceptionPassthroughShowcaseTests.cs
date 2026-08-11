@@ -35,7 +35,13 @@ namespace ProphetsWay.Example.Tests.ConventionShowcase
 	/// case behaves differently on .NET Framework and .NET Core underneath, which is why this suite runs on
 	/// <c>net48</c> as well as the modern targets.
 	/// </para>
+	/// <para>
+	/// <c>Scope=Dispatcher</c>, for the reason given on <see cref="ConventionShowcaseTests"/>: the behaviour
+	/// under test belongs to <c>ProphetsWay.BaseDataAccess</c>, not to any Data Access Layer, and
+	/// <see cref="ThrowingDal"/> is deliberately not built by <see cref="TestDataAccessFactory"/>.
+	/// </para>
 	/// </remarks>
+	[Trait("Scope", "Dispatcher")]
 	public class ExceptionPassthroughShowcaseTests
 	{
 		/// <summary>

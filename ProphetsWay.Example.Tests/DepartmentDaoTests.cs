@@ -1,6 +1,5 @@
 using ProphetsWay.Example.DataAccess.Entities;
 using ProphetsWay.Example.DataAccess.IDaos;
-using ProphetsWay.Example.DataAccess.NoDB;
 using Shouldly;
 using System;
 using System.Collections.Generic;
@@ -16,11 +15,10 @@ namespace ProphetsWay.Example.Tests
 	/// <see cref="DepartmentDataAccessTests"/>, which is how this repository shows both paths agree.
 	/// Rule numbers in the comments refer to the numbered CONTRACT list on <see cref="IDepartmentDao"/>.
 	/// </summary>
-	[Collection(TestCollections.CoreEntities)]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class DepartmentDaoTests : BaseUnitTests<IDepartmentDao>
 	{
-		protected override IDepartmentDao GetIExampleDataAccess => new ExampleDataAccess();
-
 		public static Department NewDepartment => new Department { Name = $"Dept {Guid.NewGuid()}", Description = "Initial description." };
 
 		/// <summary>A value the caller assigns to a timestamp it does not own. No operation may ever store it.</summary>

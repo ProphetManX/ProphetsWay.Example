@@ -1,6 +1,5 @@
 using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
-using ProphetsWay.Example.DataAccess.NoDB;
 using Shouldly;
 using System;
 using System.Collections.Generic;
@@ -15,11 +14,10 @@ namespace ProphetsWay.Example.Tests
 	/// inherited members, and a plain interface call for the custom <c>Restore</c>. Replaying the same setup
 	/// helpers is how this repository shows the two paths agree.
 	/// </summary>
-	[Collection(TestCollections.CoreEntities)]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class DepartmentDataAccessTests : BaseUnitTests<IExampleDataAccess>
 	{
-		protected override IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();
-
 		[Fact]
 		public void ShouldInsertGenericDepartment()
 		{

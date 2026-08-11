@@ -13,6 +13,10 @@ Post-Deployment Script Template
 
 :r .\CreateDbUser.sql
 
+--Must precede every seed. The seed scripts only insert and update; this is what removes.
+:r .\PurgeSeedData.sql
+
 :r .\CreateCompanies.sql
 :r .\CreateJobs.sql
 :r .\CreateUsers.sql
+:r .\CreateTransactions.sql

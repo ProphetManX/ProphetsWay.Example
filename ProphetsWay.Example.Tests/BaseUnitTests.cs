@@ -8,12 +8,15 @@ namespace ProphetsWay.Example.Tests
 	{
 		protected T _da;
 
+		/// <summary>
+		/// The Data Access Layer under test, from <see cref="TestDataAccessFactory"/> - which is the only
+		/// place in this suite that names an implementation, and the one line to change to run everything
+		/// here against a different one.
+		/// </summary>
 		public BaseUnitTests()
 		{
-			_da = GetIExampleDataAccess;
+			_da = TestDataAccessFactory.CreateAs<T>();
 		}
-
-		protected abstract T GetIExampleDataAccess { get; }
 
 		/// <summary>
 		/// <c>IBaseDataAccess</c> extends <see cref="IDisposable"/>, so the Data Access Layer this class
@@ -28,31 +31,40 @@ namespace ProphetsWay.Example.Tests
 	}
 
 	/// <summary>
-	/// Which test classes may not run at the same time as which others.
+	/// Which test classes may not run at the same time as which others - which, in this suite, is all of them.
 	/// </summary>
 	/// <remarks>
 	/// <para>
-	/// Every implementation in this repository writes to one process-wide store, so two test classes that touch
-	/// the same entity type are two threads writing to the same table. Any assertion phrased over the whole set
-	/// - a <c>GetCount</c>, a <c>GetAll().Count</c>, a page index - is then racing whatever the other class is
-	/// inserting, and fails intermittently and only when run alongside its neighbour.
+	/// Every implementation in this repository writes to one store, so two test classes running at once are two
+	/// threads writing to the same tables. Any assertion phrased over a whole set - a <c>GetCount</c>, a
+	/// <c>GetAll().Count</c>, a page index - is then racing whatever the other class is inserting, and fails
+	/// intermittently and only when run alongside its neighbour.
 	/// </para>
 	/// <para>
-	/// xUnit runs collections in parallel and the classes within one collection in sequence, so the grouping has
-	/// to follow the entity types the classes share. A class touching two entity types pulls both into the same
-	/// collection, which is why the list below is one large group rather than one per entity:
-	/// <c>BaseDataAccessTests</c> touches Company, Job, User, Transaction and Resource together, and
-	/// <c>DepartmentDataAccessTests</c> inserts a User alongside its Departments.
-	/// <see cref="DataAccess.Entities.CompanyResource"/> shares no entity type with any of them - its company
-	/// identifiers are synthetic and no Company row is ever created - so it stands alone and still runs in
-	/// parallel.
+	/// xUnit runs collections in parallel and the classes within one collection in sequence, so one name here is
+	/// one group that runs single file. <b>There used to be two.</b>
+	/// <see cref="DataAccess.Entities.CompanyResource"/> shared no entity type with anything else, because its
+	/// joins named synthetic company and resource identifiers and no row was ever created for them, so it stood
+	/// alone and ran in parallel. Rule 10 on <see cref="DataAccess.IDaos.ICompanyResourceDao"/> ended that: a
+	/// caller must name a company that exists and a resource that exists, so the join tests now insert
+	/// <see cref="DataAccess.Entities.Company"/> and <see cref="DataAccess.Entities.Resource"/> rows of their
+	/// own. That puts them against the exact whole-set counts in <see cref="DataAccessTransactionTests"/>,
+	/// which read <c>GetCount&lt;Company&gt;()</c> before a transaction opens and assert on it afterwards - an
+	/// assertion a Company inserted by another thread breaks, intermittently and only in a full run.
+	/// </para>
+	/// <para>
+	/// The classes under <c>ConventionShowcase</c> are the exception and carry no <c>[Collection]</c> at all:
+	/// their Data Access Layers never reach the store, so they have nothing to race.
+	/// </para>
+	/// <para>
+	/// Splitting this group again means finding classes that share no entity type with any other, and the
+	/// entity graph no longer offers one. It is worth revisiting only if the suite grows enough for the wall
+	/// clock to matter, and worth measuring before rather than assuming.
 	/// </para>
 	/// </remarks>
 	public static class TestCollections
 	{
-		public const string CoreEntities = "DataStore - Company, Job, User, Transaction, Resource, Department";
-
-		public const string CompanyResources = "DataStore - CompanyResource";
+		public const string SharedStore = "DataStore - every entity type";
 	}
 
 	/// <summary>

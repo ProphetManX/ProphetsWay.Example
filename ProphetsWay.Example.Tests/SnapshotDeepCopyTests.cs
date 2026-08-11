@@ -1,6 +1,5 @@
 using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
-using ProphetsWay.Example.DataAccess.NoDB;
 
 using Shouldly;
 
@@ -35,15 +34,14 @@ namespace ProphetsWay.Example.Tests
 	/// </para>
 	/// <para>
 	/// It writes Company, Job, Department, User and Transaction rows, and one test rolls a transaction back, so
-	/// it belongs to <see cref="TestCollections.CoreEntities"/> along with every other class touching those
-	/// types. It asserts over named rows only and never over a whole-set count.
+	/// it belongs to <see cref="TestCollections.SharedStore"/> along with every other class that reaches the
+	/// store. It asserts over named rows only and never over a whole-set count.
 	/// </para>
 	/// </remarks>
-	[Collection(TestCollections.CoreEntities)]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class SnapshotDeepCopyTests : BaseUnitTests<IExampleDataAccess>
 	{
-		protected override IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();
-
 		/// <summary>The value written through a navigation property. No operation in this class may ever store it.</summary>
 		public const string EditedName = "Renamed through a navigation property.";
 
@@ -133,7 +131,7 @@ namespace ProphetsWay.Example.Tests
 			test.Retrieved.Department.Name = EditedName;
 
 			//assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -202,7 +200,7 @@ namespace ProphetsWay.Example.Tests
 			test.Retrieved.Company.Name = EditedName;
 
 			//assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -259,7 +257,7 @@ namespace ProphetsWay.Example.Tests
 			test.User.Job.Name = EditedName;
 
 			//assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -314,7 +312,7 @@ namespace ProphetsWay.Example.Tests
 			//assert
 			count.ShouldBe(1);
 
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -365,7 +363,7 @@ namespace ProphetsWay.Example.Tests
 			test.Transaction.Company.Name = EditedName;
 
 			//assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -415,7 +413,7 @@ namespace ProphetsWay.Example.Tests
 			test.First.Company.Name = EditedName;
 
 			//assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -463,7 +461,7 @@ namespace ProphetsWay.Example.Tests
 			test.First.Company.Name = EditedName;
 
 			//assert
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 
@@ -527,7 +525,7 @@ namespace ProphetsWay.Example.Tests
 			_da.TransactionRollBack();
 
 			//assert - read through an instance that had no part in writing any of it
-			using (var reader = new ExampleDataAccess())
+			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
 		}
 

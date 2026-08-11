@@ -5,15 +5,13 @@ using System;
 using ProphetsWay.Example.DataAccess.Entities;
 using Shouldly;
 using ProphetsWay.Example.DataAccess.IDaos;
-using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection(TestCollections.CoreEntities)]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class JobDaoTests : BaseUnitTests<IJobDao>
 	{
-		protected override IJobDao GetIExampleDataAccess => new ExampleDataAccess();
-
 		public static Job NewJob => new Job { Name = $"Bob {Guid.NewGuid()}" };
 
 

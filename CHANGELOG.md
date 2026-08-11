@@ -1,4 +1,47 @@
 # v3.0.0
+### Pointing the whole test suite at a different Data Access Layer is now one line
+```TestDataAccessFactory``` is the only place in the test project that names an implementation.  
+```BaseUnitTests<T>``` used to declare ```protected abstract T GetIExampleDataAccess```, so every test 
+class supplied its own instance and swapping implementations meant editing about a dozen files.  Changing 
+the single ```return``` in ```TestDataAccessFactory.Create``` now points all 160 tests at another Data 
+Access Layer — which is what this repository has always claimed and could not actually deliver.
+
+Every test also carries an xUnit ```Scope``` trait, with none left untagged:
+
+```
+	dotnet test --filter "Scope=Contract"
+```
+
+- ```Scope=Contract``` — 138 tests, the ones any conforming implementation has to pass.  That filter is what 
+a newly written Data Access Layer runs against itself.
+- ```Scope=Characterization``` — 2 tests, pinning behavior this implementation chose and the contract does 
+not require, so another implementation may fail them and still conform.  
+```ShouldExposeUncommittedWritesToAnotherInstance```, because an in-memory store offers no isolation and a 
+database does, and ```ShouldGetCustomCompanyFunction```, because this implementation reads the argument as 
+a position in the set and wraps round the end, while the interface says nothing about what it means.
+- ```Scope=Dispatcher``` — 20 tests, exercising the reflection convention in ```ProphetsWay.BaseDataAccess``` 
+rather than any Data Access Layer at all.
+
+The two xUnit collections merged into one ```SharedStore```.  Rule 10 below means the join tests now insert 
+real ```Company``` and ```Resource``` rows, which race the exact whole-set ```Company``` counts in the 
+transaction tests.  The suite's only parallelism was the cost.
+
+### Two contract rules that now bind every Data Access Object
+```IExampleDataAccess``` gained a Data-Access-Layer-wide **ordering rule**.  The order ```GetAll``` and 
+```GetPaged``` return entities in is unspecified, but it is stable across calls for as long as the stored 
+data is unchanged, so successive paged windows partition a full pass with no overlap and no omission.  It is 
+the general form of ```IDepartmentDao``` rule 11 and it is worth saying why it is written down: an in-memory 
+store satisfies it incidentally, through the insertion order of the dictionary holding its rows, while SQL 
+Server guarantees no order at all without an explicit ```ORDER BY```.  A SQL-backed implementation that 
+omits one passes every test today and starts failing intermittently at some future row count.
+
+```ICompanyResourceDao``` gained **rule 10**: a caller must name a company that exists and a resource that 
+exists.  That replaced a promise that referential integrity may or may not be enforced — wording under which 
+two conforming implementations could behave differently for the same call, which is the exact failure this 
+repository exists to disprove.  The check itself stays optional for stores that cannot perform one, but a 
+call that succeeds against such a store is no evidence the rows are there, and a caller relying on the old 
+leniency is writing code that will not port.
+
 ### Two new entities showcasing shapes the paradigm supports
 ```Department``` is the first soft-delete entity in this example, implementing ```IBaseSoftIdEntity<int>```.
 ```Delete``` stamps ```DeletedDate``` instead of removing the row, ```Get``` still returns a deleted department 
@@ -18,7 +61,8 @@ documented as a novelty, not as the norm.
 so the paradigm's transaction contract finally has a working reference implementation to read.  One documented 
 limitation is accepted: another Data Access Layer instance can see writes that have not been committed, the 
 equivalent of ```READ UNCOMMITTED```.  That is the price of an in-memory store — a database-backed 
-implementation gets its isolation from the provider.
+implementation gets its isolation from the provider.  The test pinning that is tagged 
+```Scope=Characterization```, so an implementation that does provide isolation fails it correctly.
 
 ### Breaking: every DAO now returns snapshots
 Five of the seven DAOs used to alias.  The store held the very instance you passed in, and ```Get``` handed 
@@ -51,6 +95,31 @@ duplicate keys.  Keys are now sequential via ```Interlocked.Increment```, which 
 column does.
 - ```TransactionDao.GetCount``` and ```GetPaged``` were reading without taking the lock every other read takes.
 - A test isolation race in ```ShouldGetGenericPaged```, and three more of the same shape that had not failed yet.
+
+### The database project can back the contracts now
+```Departments``` and ```CompanyResources``` were added — the latter with a composite primary key on the 
+pair and foreign keys to both parents — along with ```Users.DepartmentId``` and its foreign key, so the two 
+new entities have somewhere to live.
+
+Three corrections to what was already there.  ```Transactions.Amount``` was ```DECIMAL``` with no precision, 
+which SQL Server reads as ```DECIMAL(18, 0)``` — zero decimal places — silently rounding away the fractional 
+part of every amount stored; it is now ```DECIMAL(19, 4)```.  ```Transactions.DateOfAction``` moved from 
+```DATETIME```/```GetDate()``` to ```DATETIME2(7)```/```SYSUTCDATETIME()```, and the table gained foreign 
+keys to ```Users``` and ```Companies```.  ```Resources.Name``` went from ```VARCHAR(50) NOT NULL``` to 
+```VARCHAR(MAX) NULL```, having previously rejected a ```Resource``` the in-memory implementation accepts.
+
+### Seed data is purged child-to-parent
+Each seed script used to delete the rows outside its own set, in whatever order the scripts happened to run 
+— parents before children.  Once the new foreign keys existed that made the *second* deployment against any 
+used database fail with error 547 and roll back, and with no purge for ```CompanyResources``` at all, fail 
+that way permanently.  This is a defect the build cannot catch.  A new ```PurgeSeedData.sql``` now empties 
+the tables child-to-parent ahead of every seed, and the ```WHEN NOT MATCHED BY Source THEN DELETE``` clauses 
+came out of the four seed scripts so the ordering lives in exactly one place.
+
+```CreateTransactions.sql``` was never referenced by the deployment chain.  It is now, and the 
+```JobId = Source.Amount``` in its ```WHEN MATCHED``` branch — assigning to a column ```Transactions``` does 
+not have — is corrected to ```Amount = Source.Amount```.  It had been dead code carrying a latent error, 
+invisible because post-deployment scripts are not validated by the build.
 
 ### Build and tooling
 - Target frameworks for the Data Access Layer projects are now ```netstandard2.0;net48;net8.0;net9.0```, 

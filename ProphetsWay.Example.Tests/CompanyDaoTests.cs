@@ -5,15 +5,17 @@ using System;
 using ProphetsWay.Example.DataAccess.Entities;
 using Shouldly;
 using ProphetsWay.Example.DataAccess.IDaos;
-using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection(TestCollections.CoreEntities)]
+	/// <summary>
+	/// The <see cref="ICompanyDao"/> contract, plus the one member of it whose behaviour is this
+	/// implementation's own invention. The traits are on the methods rather than on the class for that reason -
+	/// see <see cref="ShouldGetCustomCompanyFunction"/>.
+	/// </summary>
+	[Collection(TestCollections.SharedStore)]
 	public class CompanyDaoTests : BaseUnitTests<ICompanyDao>
 	{
-		protected override ICompanyDao GetIExampleDataAccess => new ExampleDataAccess();
-
 		public static Company NewCompany => new Company{ Name = $"Bob {Guid.NewGuid()}" };
 
 		public delegate void InsertAssertion(Company co);
@@ -27,6 +29,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldInsertCompany()
 		{
 			//setup
@@ -53,6 +56,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldGetCompany()
 		{
 			//setup
@@ -92,6 +96,7 @@ namespace ProphetsWay.Example.Tests
         }
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldUpdateCompany()
 		{
 			//setup
@@ -121,6 +126,7 @@ namespace ProphetsWay.Example.Tests
 
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldDeleteCompany()
 		{
 			//setup
@@ -150,6 +156,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldGetCount()
 		{
 			//setup
@@ -181,6 +188,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldGetPagedView()
 		{
 			//setup
@@ -195,7 +203,15 @@ namespace ProphetsWay.Example.Tests
 			assertion(count, view, subset);
 		}
 
+		/// <summary>
+		/// <see cref="ICompanyDao.GetCustomCompanyFunction"/> stands in for whatever query a real Data Access
+		/// Object would add beyond the surface it inherits, and the interface says nothing whatsoever about what
+		/// its argument means. This implementation reads it as a position in the set and wraps round the end, so
+		/// asking for 100 against three stored companies returns one of them; an implementation that read it as
+		/// an identifier would return <c>null</c> here and be equally conforming.
+		/// </summary>
 		[Fact]
+		[Trait("Scope", "Characterization")]
 		public void ShouldGetCustomCompanyFunction()
 		{
 			//setup

@@ -21,6 +21,7 @@
 		<Build Remove="PostBuildScripts\**\*.sql" />
 		<PostDeploy Include="PostBuildScripts\PostDeploymentStart.sql" />
 		<None Include="PostBuildScripts\CreateDbUser.sql" />
+		<None Include="PostBuildScripts\PurgeSeedData.sql" />
 		<None Include="PostBuildScripts\CreateCompanies.sql" />
 		<None Include="PostBuildScripts\CreateJobs.sql" />
 		<None Include="PostBuildScripts\CreateUsers.sql" />

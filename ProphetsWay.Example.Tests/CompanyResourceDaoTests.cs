@@ -1,11 +1,10 @@
+using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
 using ProphetsWay.Example.DataAccess.IDaos;
-using ProphetsWay.Example.DataAccess.NoDB;
 using Shouldly;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using Xunit;
 
 namespace ProphetsWay.Example.Tests
@@ -16,20 +15,67 @@ namespace ProphetsWay.Example.Tests
 	/// <see cref="ICompanyResourceDao"/>. <see cref="CompanyResourceDataAccessTests"/> replays these helpers
 	/// through the generic dispatcher and shows where that path stops working.
 	/// </summary>
-	[Collection(TestCollections.CompanyResources)]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class CompanyResourceDaoTests : BaseUnitTests<ICompanyResourceDao>
 	{
-		protected override ICompanyResourceDao GetIExampleDataAccess => new ExampleDataAccess();
+		/// <summary>
+		/// The same instance, seen as the aggregate, so an arrangement can create the company and the resource a
+		/// join is about to name.
+		/// </summary>
+		/// <remarks>
+		/// The helpers below are handed <see cref="ICompanyResourceDao"/> because that is the interface whose
+		/// contract they exercise, and because <c>GetAll(null)</c> is ambiguous on the aggregate. Every Data
+		/// Access Layer in this suite comes from <see cref="TestDataAccessFactory"/> and is therefore an
+		/// <see cref="IExampleDataAccess"/>; the check is here so that ceasing to be one reports itself rather
+		/// than surfacing as an <see cref="InvalidCastException"/> from an arrangement.
+		/// </remarks>
+		private static IExampleDataAccess Aggregate(ICompanyResourceDao da)
+		{
+			var owner = da as IExampleDataAccess;
 
-		private static int _lastCompanyId = 9000;
+			if (owner == null)
+				throw new InvalidOperationException(
+					$"{da.GetType().FullName} is not an {nameof(IExampleDataAccess)}, so this test cannot create the " +
+					"company and resource rows rule 10 requires a join to name.");
+
+			return owner;
+		}
+
+		/// <summary>A company row that really exists, and its identifier.</summary>
+		public static int InsertCompany(IExampleDataAccess da)
+		{
+			var co = new Company { Name = $"CompanyResource host {Guid.NewGuid()}" };
+			da.Insert(co);
+
+			return co.Id;
+		}
+
+		/// <summary>A resource row that really exists, and its identifier.</summary>
+		public static Guid InsertResource(IExampleDataAccess da)
+		{
+			var res = new Resource { Name = $"CompanyResource host {Guid.NewGuid()}" };
+			da.Insert(res);
+
+			return res.Id;
+		}
 
 		/// <summary>
-		/// A company identifier no other test uses. The Data Access Layer does not verify that the company or
-		/// the resource named on a join actually exists, so a test never has to create either one.
+		/// A join naming a company that exists and a resource that exists, which rule 10 requires of every
+		/// caller. The rows are created here; the join itself is not stored until something inserts it.
 		/// </summary>
-		public static int NextCompanyId => Interlocked.Increment(ref _lastCompanyId);
+		/// <remarks>
+		/// Rule 10 binds the caller, not the store. This implementation is explicitly not required to check, and
+		/// would accept a synthetic identifier quite happily - which is exactly why the arrangement has to create
+		/// the rows anyway. A store that enforces referential integrity rejects the synthetic version, and an
+		/// arrangement built on that leniency is a suite that only ever passes against one implementation.
+		/// </remarks>
+		public static CompanyResource NewCompanyResource(ICompanyResourceDao da)
+		{
+			var owner = Aggregate(da);
 
-		public static CompanyResource NewCompanyResource => new CompanyResource { CompanyId = NextCompanyId, ResourceId = Guid.NewGuid() };
+			return new CompanyResource { CompanyId = InsertCompany(owner), ResourceId = InsertResource(owner) };
+		}
 
 		public static int CountMatching(ICompanyResourceDao da, CompanyResource pair)
 		{
@@ -41,7 +87,7 @@ namespace ProphetsWay.Example.Tests
 		public delegate void InsertAssertion(CompanyResource pair);
 		public static (CompanyResource CompanyResource, InsertAssertion Assert) Setup_CreateCompanyResource_TestInsert(ICompanyResourceDao da)
 		{
-			var pair = NewCompanyResource;
+			var pair = NewCompanyResource(da);
 			var companyId = pair.CompanyId;
 			var resourceId = pair.ResourceId;
 
@@ -73,7 +119,7 @@ namespace ProphetsWay.Example.Tests
 		public delegate void DuplicateInsertAssertion();
 		public static (CompanyResource CompanyResource, DuplicateInsertAssertion Assert) Setup_InsertCompanyResource_TestDuplicateIsNoOp(ICompanyResourceDao da)
 		{
-			var stored = NewCompanyResource;
+			var stored = NewCompanyResource(da);
 			da.Insert(stored);
 			var totalBefore = da.GetAll(null).Count;
 
@@ -109,14 +155,17 @@ namespace ProphetsWay.Example.Tests
 		public delegate void DeleteAssertion(int count);
 		public static (CompanyResource CompanyResource, DeleteAssertion Assert) Setup_InsertCompanyResource_TestDelete(ICompanyResourceDao da)
 		{
-			var target = NewCompanyResource;
+			var owner = Aggregate(da);
+
+			var target = NewCompanyResource(da);
 			da.Insert(target);
 
 			//Two neighbours, each sharing one side of the pair. Rule 1 says neither may be caught by a
-			//delete that matches on the pair.
-			var sameCompany = new CompanyResource { CompanyId = target.CompanyId, ResourceId = Guid.NewGuid() };
+			//delete that matches on the pair. The side each does not share is a row of its own, because rule 10
+			//binds these two calls exactly as it binds the one above.
+			var sameCompany = new CompanyResource { CompanyId = target.CompanyId, ResourceId = InsertResource(owner) };
 			da.Insert(sameCompany);
-			var sameResource = new CompanyResource { CompanyId = NextCompanyId, ResourceId = target.ResourceId };
+			var sameResource = new CompanyResource { CompanyId = InsertCompany(owner), ResourceId = target.ResourceId };
 			da.Insert(sameResource);
 
 			var totalBefore = da.GetAll(null).Count;
@@ -153,7 +202,7 @@ namespace ProphetsWay.Example.Tests
 		public delegate void SecondDeleteAssertion(int count);
 		public static (CompanyResource CompanyResource, SecondDeleteAssertion Assert) Setup_DeleteCompanyResource_TestSecondDelete(ICompanyResourceDao da)
 		{
-			var pair = NewCompanyResource;
+			var pair = NewCompanyResource(da);
 			da.Insert(pair);
 			da.Delete(pair);
 			var totalBefore = da.GetAll(null).Count;
@@ -184,8 +233,8 @@ namespace ProphetsWay.Example.Tests
 		[Fact]
 		public void ShouldReturnZeroWhenDeletingACompanyResourceThatWasNeverStored()
 		{
-			//setup - no precondition: the point is a pair that matches nothing
-			var phantom = NewCompanyResource;
+			//setup - no precondition beyond rule 10: a company and a resource that exist, never joined to each other
+			var phantom = NewCompanyResource(_da);
 			var totalBefore = _da.GetAll(null).Count;
 
 			//act
@@ -203,7 +252,7 @@ namespace ProphetsWay.Example.Tests
 		public delegate void GetAllAssertion(IList<CompanyResource> all);
 		public static (CompanyResource CompanyResource, GetAllAssertion Assert) Setup_InsertCompanyResource_TestGetAll(ICompanyResourceDao da)
 		{
-			var pair = NewCompanyResource;
+			var pair = NewCompanyResource(da);
 			da.Insert(pair);
 
 			return (pair, (all) =>
@@ -246,15 +295,15 @@ namespace ProphetsWay.Example.Tests
 		/// that has something in it, so the most common way to break the rule - returning <c>null</c>, or a
 		/// <c>null</c>-yielding query result, when there is nothing to return - is never reached. This is the
 		/// same shape as <c>Setup_DeleteEveryDepartment_TestEmptyViews</c>, and it is safe for the same
-		/// reason: the <see cref="TestCollections.CompanyResources"/> collection runs its classes one at a
-		/// time, and every other test in it creates the joins it needs.
+		/// reason: <see cref="TestCollections.SharedStore"/> runs its classes one at a time, and every other
+		/// test in the suite creates the joins it needs.
 		/// </summary>
 		public delegate void EmptyViewAssertion(IList<CompanyResource> all);
 		public static EmptyViewAssertion Setup_DeleteEveryCompanyResource_TestEmptyGetAll(ICompanyResourceDao da)
 		{
 			//Give the delete something to bite on, then clear the store out.
-			da.Insert(NewCompanyResource);
-			da.Insert(NewCompanyResource);
+			da.Insert(NewCompanyResource(da));
+			da.Insert(NewCompanyResource(da));
 
 			foreach (var pair in da.GetAll(null).ToList())
 				da.Delete(pair);
@@ -294,7 +343,9 @@ namespace ProphetsWay.Example.Tests
 		public delegate void SnapshotAssertion(IList<CompanyResource> refetched);
 		public static (CompanyResource CompanyResource, SnapshotAssertion Assert) Setup_InsertCompanyResource_TestGetAllReturnsSnapshots(ICompanyResourceDao da)
 		{
-			var pair = NewCompanyResource;
+			var owner = Aggregate(da);
+
+			var pair = NewCompanyResource(da);
 			da.Insert(pair);
 
 			var companyId = pair.CompanyId;
@@ -303,17 +354,18 @@ namespace ProphetsWay.Example.Tests
 			var all = da.GetAll(null);
 			var countBefore = all.Count;
 
-			//Rewrite a join the list handed back, into a pair that names nothing stored.
+			//Rewrite a join the list handed back, into a pair the store does not hold. Both sides are real rows,
+			//so the only thing absent from the store is the join itself - which is all the assertion is about.
 			var mine = all.Single(x => x.CompanyId == companyId && x.ResourceId == resourceId);
-			mine.CompanyId = NextCompanyId;
-			mine.ResourceId = Guid.NewGuid();
+			mine.CompanyId = InsertCompany(owner);
+			mine.ResourceId = InsertResource(owner);
 			var rewrittenCompanyId = mine.CompanyId;
 			var rewrittenResourceId = mine.ResourceId;
 
 			//And rewrite the list itself. An implementation is free to return a fixed-size or otherwise
 			//unmodifiable list, and refusing the mutation honours rule 9 just as well as absorbing it - so
 			//this one throw is tolerated, and no other in this file is.
-			var added = new CompanyResource { CompanyId = NextCompanyId, ResourceId = Guid.NewGuid() };
+			var added = NewCompanyResource(da);
 			try
 			{
 				all.Add(added);
@@ -362,7 +414,7 @@ namespace ProphetsWay.Example.Tests
 		public delegate void InsertAdoptionAssertion(CompanyResource rewritten);
 		public static (CompanyResource CompanyResource, InsertAdoptionAssertion Assert) Setup_CreateCompanyResource_TestInsertDoesNotAdoptTheArgument(ICompanyResourceDao da)
 		{
-			var pair = NewCompanyResource;
+			var pair = NewCompanyResource(da);
 			var companyId = pair.CompanyId;
 			var resourceId = pair.ResourceId;
 
@@ -382,11 +434,12 @@ namespace ProphetsWay.Example.Tests
 		{
 			//setup
 			var test = Setup_CreateCompanyResource_TestInsertDoesNotAdoptTheArgument(_da);
+			var rewrite = NewCompanyResource(_da);
 
 			//act - the rewrite is deliberately after the call returns, so nothing about it may reach the store
 			_da.Insert(test.CompanyResource);
-			test.CompanyResource.CompanyId = NextCompanyId;
-			test.CompanyResource.ResourceId = Guid.NewGuid();
+			test.CompanyResource.CompanyId = rewrite.CompanyId;
+			test.CompanyResource.ResourceId = rewrite.ResourceId;
 
 			//assert
 			test.Assert(test.CompanyResource);

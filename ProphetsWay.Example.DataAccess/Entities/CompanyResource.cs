@@ -27,8 +27,10 @@ namespace ProphetsWay.Example.DataAccess.Entities
 	/// </para>
 	/// <para>
 	/// <b>This type carries no behavior.</b> It is a data-carrying object with automatic properties and a
-	/// default parameterless constructor, and it performs no validation. In particular it does not verify that
-	/// the company or the resource it names actually exists.
+	/// default parameterless constructor, and it performs no validation. In particular nothing on this type
+	/// checks that the company or the resource it names actually exists — the Data Access Layer contract
+	/// nevertheless requires the caller to name rows that do, and a store that enforces referential integrity
+	/// will reject a join that does not.
 	/// </para>
 	/// <para>
 	/// Equality is the default reference equality inherited from <see cref="object"/>. Two instances naming
@@ -47,8 +49,8 @@ namespace ProphetsWay.Example.DataAccess.Entities
 		/// </value>
 		/// <remarks>
 		/// Set by the caller before <c>Insert</c>, <c>Delete</c>, or any lookup. Never assigned by the Data
-		/// Access Layer — unlike a surrogate key, this value is supplied, not generated. It is not validated
-		/// against the companies that actually exist.
+		/// Access Layer — unlike a surrogate key, this value is supplied, not generated. This type does not
+		/// validate it, but <c>Insert</c> requires it to name a company that exists.
 		/// </remarks>
 		public int CompanyId { get; set; }
 
@@ -61,7 +63,8 @@ namespace ProphetsWay.Example.DataAccess.Entities
 		/// </value>
 		/// <remarks>
 		/// Set by the caller before <c>Insert</c>, <c>Delete</c>, or any lookup. Never assigned by the Data
-		/// Access Layer. It is not validated against the resources that actually exist.
+		/// Access Layer. This type does not validate it, but <c>Insert</c> requires it to name a resource that
+		/// exists.
 		/// </remarks>
 		public Guid ResourceId { get; set; }
 	}

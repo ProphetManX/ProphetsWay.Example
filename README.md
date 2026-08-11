@@ -27,10 +27,11 @@ it. That is the entire argument, and it is why this repository is worth twenty m
 **Highlights**
 
 - **A DAL you can replace.** Business logic depends on `IExampleDataAccess` and on entities. Nothing else.
-- **Tests that outlive the implementation.** Every test class takes its DAL from one overridable property.
-  Point it at your implementation and the assertions come along for free.
+- **Tests that outlive the implementation.** One factory method names the implementation for the whole
+  suite. Change its single `return`, run `dotnet test --filter "Scope=Contract"`, and the assertions come
+  along for free.
 - **Contracts specified, not implied.** `IDepartmentDao` carries 19 numbered rules; `ICompanyResourceDao`
-  carries 9. Two implementations that both pass cannot differ in a way that matters.
+  carries 10. Two implementations that both pass cannot differ in a way that matters.
 - **The awkward parts are demonstrated, not hidden.** Soft delete, a keyless entity, transactions, disposal,
   and a folder of deliberately mis-wired DALs showing exactly how the dispatcher fails.
 
@@ -38,7 +39,20 @@ it. That is the entire argument, and it is why this repository is worth twenty m
 
 ## Read this first: the demonstration
 
-Every test class inherits one base that owns the data access layer and disposes it:
+One method in the test project names an implementation. `Create` on
+[TestDataAccessFactory](ProphetsWay.Example.Tests/TestDataAccessFactory.cs) is the only place in the entire
+suite where `new ExampleDataAccess()` appears:
+
+```csharp
+public static IExampleDataAccess Create()
+{
+	//>>> The one line to change to point this suite at another implementation. <<<
+	return new ExampleDataAccess();
+}
+```
+
+Every test class inherits `BaseUnitTests<T>`, which asks the factory for the data access layer and disposes
+it after each test:
 
 ```csharp
 public abstract class BaseUnitTests<T> : IDisposable
@@ -47,10 +61,8 @@ public abstract class BaseUnitTests<T> : IDisposable
 
 	public BaseUnitTests()
 	{
-		_da = GetIExampleDataAccess;
+		_da = TestDataAccessFactory.CreateAs<T>();
 	}
-
-	protected abstract T GetIExampleDataAccess { get; }
 
 	public void Dispose()
 	{
@@ -59,29 +71,71 @@ public abstract class BaseUnitTests<T> : IDisposable
 }
 ```
 
-A concrete test class supplies the implementation in exactly one line:
+`T` is usually one of the DAO interfaces `IExampleDataAccess` aggregates rather than the aggregate itself,
+and no generic constraint can express "an interface `IExampleDataAccess` happens to inherit" — so
+`CreateAs<T>` is a checked cast that names the interface an implementation stopped implementing, rather than
+throwing a bare `InvalidCastException` out of a constructor.
+
+A concrete test class therefore names the interface it exercises, and nothing else:
 
 ```csharp
-[Collection(TestCollections.CoreEntities)]
+[Collection(TestCollections.SharedStore)]
+[Trait("Scope", "Contract")]
 public class DepartmentDaoTests : BaseUnitTests<IDepartmentDao>
 {
-	protected override IDepartmentDao GetIExampleDataAccess => new ExampleDataAccess();
-
 	// ...every test in the class is written against IDepartmentDao
 }
 ```
 
-That line is the seam. Change it and the entire suite runs against something else:
+### Running this suite against your own DAL
+
+Change one `return`:
 
 > **Illustrative** — not currently present in the repo.
 
 ```csharp
-protected override IDepartmentDao GetIExampleDataAccess => new MyEntityFrameworkDataAccess();
+public static IExampleDataAccess Create()
+{
+	return new MyEntityFrameworkDataAccess();
+}
 ```
 
-Nothing else in the class knows or cares. That is what "swappable" means when it is real rather than
-aspirational, and it is why the assertions here are worth reading even if you never use the in-memory
-implementation.
+Then run the tests any conforming implementation has to pass:
+
+```
+dotnet test --filter "Scope=Contract"
+```
+
+Nothing else in the suite changes. That is what "swappable" means when it is real rather than aspirational.
+
+### Why the filter, and what it leaves out
+
+Every test carries a `Scope` trait saying who it binds.
+
+| `Scope` | Tests | Who has to pass it |
+|---|---|---|
+| `Contract` | 138 | Every implementation of `IExampleDataAccess`. These are the rules the interfaces state. |
+| `Characterization` | 2 | This implementation only. Another DAL may legitimately fail them. |
+| `Dispatcher` | 20 | Nobody's DAL. They pin the reflection convention in `ProphetsWay.BaseDataAccess` itself. |
+
+**The honest answer to "will all 160 of these pass against my implementation?" is: all but two, and here is
+exactly which two.**
+
+- `CompanyDaoTests.ShouldGetCustomCompanyFunction` — `ICompanyDao.GetCustomCompanyFunction(int)` stands in
+  for whatever query your domain adds beyond the surface it inherits, and the interface deliberately says
+  nothing about what its argument means. This implementation reads it as a position in the set and wraps
+  round the end, so asking for 100 against three stored companies returns one of them. An implementation
+  that read it as an identifier would return `null` and be exactly as conforming.
+- `DataAccessTransactionTests.ShouldExposeUncommittedWritesToAnotherInstance` — pins `READ UNCOMMITTED`, the
+  isolation this in-memory store does not provide. `IBaseDataAccess` specifies no isolation level, so a DAL
+  that gets isolation from a real database **fails this test correctly**.
+
+The `Dispatcher` tests live in `ConventionShowcase/` and construct their own deliberately mis-wired DALs.
+They never touch the factory, so swapping the suite onto another implementation must leave them exactly as
+they are — they are tests to read, not a target to hit.
+
+That split is the point. A suite claiming total portability would be hiding the two places a different
+implementation is allowed to differ, and hiding them is how a paradigm gets found out.
 
 ---
 
@@ -129,8 +183,9 @@ the database is not empty; the data is deliberate nonsense.
 
 The most useful part of the repository. xUnit and Shouldly, 160 tests, run across `net48`, `net8.0` and
 `net9.0`. By default they run against the in-memory implementation, but every test class takes its DAL from
-one overridable property — point it at any class implementing `IExampleDataAccess`, backed by anything you
-like, and the suite tests your implementation instead.
+`TestDataAccessFactory.Create` — point that one method at any class implementing `IExampleDataAccess`,
+backed by anything you like, and the suite tests your implementation instead. Every test carries a `Scope`
+trait, so you can run only the ones your implementation is bound by.
 
 ---
 
@@ -340,6 +395,13 @@ Through the dispatcher, `Insert<CompanyResource>`, `Delete<CompanyResource>` and
 all work, because none of them resolves an identifier. `Get<CompanyResource>(id)` throws
 `DataAccessConventionException` and can never be made to work.
 
+**A join must name rows that exist.** Rule 10 binds the caller: the company and the resource have to be
+there. An implementation over a store that enforces referential integrity rejects a join naming a row that
+is not, throwing an exception of the storage layer's own; one whose store cannot enforce it is not obliged
+to check, so a call that succeeds there is no evidence the rows exist. The tests insert a real `Company` and
+a real `Resource` before every join for exactly that reason — an arrangement built on synthetic identifiers
+is a suite that only ever passes against a lenient store.
+
 **Treat this as a novelty, not the norm.** Give an entity an identifier by default: it costs one column, it
 makes the entity addressable by the dispatcher, it lets a single row be updated in place, and it stops
 being optional the moment the join grows a field of its own.
@@ -372,8 +434,9 @@ open.
 
 **One accepted limitation:** another DAL instance can read writes this one has not committed — the
 equivalent of `READ UNCOMMITTED`. That is the price of an in-memory store with nowhere to put an
-uncommitted row; a database-backed implementation gets isolation from its provider. A test pins it so a
-reader can tell an accepted tradeoff from a defect.
+uncommitted row; a database-backed implementation gets isolation from its provider. A test pins it — traited
+`Scope=Characterization`, because a DAL that does provide isolation fails it correctly — so a reader can
+tell an accepted tradeoff from a defect.
 
 ### Disposal
 
@@ -425,7 +488,10 @@ mistake each, named for the mistake, so you meet each failure mode here rather t
 | `ThrowingDal` | Correct, and throws — used to prove the exception arrives unwrapped |
 
 Every one fails with `DataAccessConventionException`, and no test asserts on message text: the wording is
-not part of the contract. Two properties are worth knowing before you write your own DAL.
+not part of the contract. These tests are traited `Scope=Dispatcher` rather than `Contract` — they pin the
+reflection convention in `ProphetsWay.BaseDataAccess`, not any DAL, so they hold whatever implementation the
+factory returns and are excluded from a `Scope=Contract` run. Two properties are worth knowing before you
+write your own DAL.
 
 - **The declared return type is checked before the method is invoked**, so a mis-declared `Update` or
   `Delete` cannot write to your database and only then report itself.
@@ -451,7 +517,7 @@ illustrated companion to it, not a replacement.
 ## Architecture & Design Decisions
 
 **Behavior is specified in prose, in the interface, in numbers.** `IDepartmentDao` carries 19 numbered
-rules and `ICompanyResourceDao` carries 9, each followed by a `WHY` section. Two conforming DALs that
+rules and `ICompanyResourceDao` carries 10, each followed by a `WHY` section. Two conforming DALs that
 disagree about whether a negative `skip` throws or silently no-ops are two DALs that are not actually
 interchangeable, so the contract answers it and the tests enforce the answer down both call paths.
 
@@ -468,11 +534,15 @@ and the implementation follows that exactly.
 **Surrogate keys are sequential, via `Interlocked.Increment`.** Which is also what a real identity column
 does, and unlike a shared `Random` it is thread safe.
 
-**Test collections are grouped by the entity types the classes share.** Every implementation here writes to
-one process-wide store, so two classes touching the same entity are two threads writing to the same table,
-and any assertion over a whole set races. `TestCollections` names the grouping and `BaseUnitTests` explains
-it. Keep `CompanyResource` out of the transaction tests, or the two collections collapse into one and the
-suite loses its parallelism.
+**Every test class that touches the store runs in one xUnit collection.** Every implementation here writes
+to one process-wide store, so two classes running at once are two threads writing to the same tables, and
+any assertion phrased over a whole set races. There used to be two collections: the join tests shared no
+entity type with anything else, because they named synthetic company and resource identifiers and no row was
+ever created for them. Rule 10 on `ICompanyResourceDao` ended that — a join must now name rows that exist,
+so those tests insert `Company` and `Resource` rows of their own, which puts them against the exact
+whole-set counts in `DataAccessTransactionTests`. One collection, `TestCollections.SharedStore`, is the
+honest consequence; `BaseUnitTests.cs` carries the full reasoning and what splitting it again would take.
+The `ConventionShowcase` classes carry no collection at all — their DALs never reach the store.
 
 ---
 
@@ -488,6 +558,17 @@ dotnet test
 
 The whole solution — database project included — builds with the .NET CLI. No database server is required
 to run the tests: they use the in-memory implementation by default.
+
+Every test carries a `Scope` trait, so you can run a subset:
+
+```
+dotnet test --filter "Scope=Contract"
+dotnet test --filter "Scope=Characterization"
+dotnet test --filter "Scope=Dispatcher"
+```
+
+`Contract` is the set a new implementation of `IExampleDataAccess` has to pass — see
+[Why the filter, and what it leaves out](#why-the-filter-and-what-it-leaves-out).
 
 To tinker against real SQL Server, publish `ProphetsWay.Example.Database`.
 

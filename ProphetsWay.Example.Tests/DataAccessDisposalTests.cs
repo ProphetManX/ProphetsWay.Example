@@ -1,6 +1,5 @@
 using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
-using ProphetsWay.Example.DataAccess.NoDB;
 using Shouldly;
 using System;
 using System.Collections.Generic;
@@ -17,23 +16,21 @@ namespace ProphetsWay.Example.Tests
 	/// </summary>
 	/// <remarks>
 	/// <para>
-	/// Joins <see cref="TestCollections.CoreEntities"/> because it writes <see cref="Department"/> rows.
+	/// Joins <see cref="TestCollections.SharedStore"/> because it writes <see cref="Department"/> rows.
 	/// </para>
 	/// <para>
 	/// <b>The first test is the important one, and it is a diagnostic before it is a contract check.</b>
-	/// <see cref="BaseUnitTests{T}"/> disposes its Data Access Layer after every single test, and
-	/// <see cref="TestCollections.CompanyResources"/> runs in parallel with this collection. A
-	/// <c>Dispose</c> written to clear the store therefore deletes data out from underneath a test in the
-	/// other collection, mid-run - and does so intermittently, on whichever test happens to be executing at
-	/// the time, vanishing entirely whenever either collection is run on its own. That failure is close to
-	/// undiagnosable from the outside. This test names the cause, in one place, on one thread.
+	/// <see cref="BaseUnitTests{T}"/> disposes its Data Access Layer after every single test. A
+	/// <c>Dispose</c> written to clear the store therefore deletes data out from underneath whatever runs
+	/// next, and against a Data Access Layer whose store outlives the process - a database - it deletes it
+	/// out from underneath anything else connected to it. That failure is close to undiagnosable from the
+	/// outside. This test names the cause, in one place, on one thread.
 	/// </para>
 	/// </remarks>
-	[Collection(TestCollections.CoreEntities)]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class DataAccessDisposalTests : BaseUnitTests<IExampleDataAccess>
 	{
-		protected override IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();
-
 		public delegate void SurvivalAssertion(Department refetched, IList<Department> all);
 		public static (int DepartmentId, SurvivalAssertion Assert) Setup_InsertDepartment_TestItSurvivesAnotherInstanceBeingDisposed(IExampleDataAccess da)
 		{
@@ -61,7 +58,7 @@ namespace ProphetsWay.Example.Tests
 
 			//act - a second instance, used and then disposed, exactly as every other test class in this suite
 			//disposes one after every test it runs
-			using (var other = new ExampleDataAccess())
+			using (var other = TestDataAccessFactory.Create())
 			{
 				other.GetAll<Department>().Any(x => x.Id == test.DepartmentId).ShouldBeTrue();
 			}
@@ -77,7 +74,7 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldNotThrowWhenDisposedTwice()
 		{
 			//setup
-			var da = new ExampleDataAccess();
+			var da = TestDataAccessFactory.Create();
 
 			//act & assert - disposal is idempotent, so that a using statement nested inside a finally block
 			//is safe regardless of what came before. Contrast the transaction members, which throw on a
@@ -93,7 +90,7 @@ namespace ProphetsWay.Example.Tests
 		public void ShouldThrowWhenAMemberIsCalledAfterDispose()
 		{
 			//setup
-			var da = new ExampleDataAccess();
+			var da = TestDataAccessFactory.Create();
 			da.Dispose();
 
 			//act & assert - every member other than Dispose refuses to run on a disposed instance.

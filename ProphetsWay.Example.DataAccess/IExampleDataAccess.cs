@@ -74,6 +74,37 @@ namespace ProphetsWay.Example.DataAccess
 	/// already-edited state, and the rollback restores the edit instead of reversing it. Snapshots on read are
 	/// what keep the pre-update state available to be restored.
 	/// </para>
+	///
+	/// <para><b>ORDERING RULE — binding on every Data Access Object reached through this interface.</b></para>
+	///
+	/// <para>
+	/// The order in which <c>GetAll</c> and <c>GetPaged</c> return entities is unspecified, but it is stable
+	/// across calls for as long as the stored data is unchanged. Successive <c>GetPaged</c> windows therefore
+	/// partition the full set with no overlap and no omission, and each window holds the same entities, in the
+	/// same positions, as the stretch of a full pass it covers — a full pass being <c>GetAll</c>, or
+	/// <c>GetPaged</c> at a <c>skip</c> of <c>0</c> taking <c>GetCount</c> records. Where a Data Access Object
+	/// offers both, <c>GetAll</c> and <c>GetPaged</c> order identically. Where it offers <c>GetAll</c> alone the
+	/// stability half still binds: two calls with nothing written between them return the same entities in the
+	/// same order.
+	/// </para>
+	///
+	/// <para>
+	/// <b>This is the general form of <see cref="IDepartmentDao"/> rule 11</b>, which states it for that Data
+	/// Access Object; nothing here replaces or contradicts it. <see cref="ICompanyResourceDao"/> rule 5, which
+	/// promises no particular order from <see cref="ICompanyResourceDao.GetAll"/>, is the unspecified half of
+	/// this rule rather than an exception to it. <see cref="ICompanyDao"/>, <see cref="ITransactionDao"/>,
+	/// <see cref="IJobDao"/> and <see cref="IResourceDao"/> are bound on the same terms.
+	/// </para>
+	///
+	/// <para>
+	/// <b>Why it matters.</b> Without it two conforming implementations disagree, and the one that disagrees
+	/// does so intermittently and only at scale. An in-memory store satisfies the rule incidentally, through
+	/// the insertion order of the dictionary holding its rows. SQL Server guarantees no order at all without an
+	/// explicit <c>ORDER BY</c>, and the plan it picks for an unordered scan can change as a table grows — so a
+	/// SQL-backed Data Access Layer that omits <c>ORDER BY</c> passes every test today and starts failing them
+	/// at some future row count, with nothing to point at. Satisfy it with an explicit <c>ORDER BY</c> on both
+	/// <c>GetAll</c> and <c>GetPaged</c>, using the same ordering in each.
+	/// </para>
 	/// </remarks>
 	public interface IExampleDataAccess : IBaseDataAccess, ICompanyDao, IJobDao, IUserDao, ITransactionDao, IResourceDao, IDepartmentDao, ICompanyResourceDao
 	{

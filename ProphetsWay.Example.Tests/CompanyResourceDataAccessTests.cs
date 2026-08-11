@@ -1,7 +1,6 @@
 using ProphetsWay.BaseDataAccess;
 using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
-using ProphetsWay.Example.DataAccess.NoDB;
 using Shouldly;
 using Xunit;
 
@@ -13,11 +12,10 @@ namespace ProphetsWay.Example.Tests
 	/// <c>Insert</c>, <c>Delete</c> and <c>GetAll</c>, because none of those resolve an identifier - and it
 	/// can never dispatch through <c>Get</c>, because that one does.
 	/// </summary>
-	[Collection(TestCollections.CompanyResources)]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class CompanyResourceDataAccessTests : BaseUnitTests<IExampleDataAccess>
 	{
-		protected override IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();
-
 		[Fact]
 		public void ShouldInsertGenericCompanyResource()
 		{

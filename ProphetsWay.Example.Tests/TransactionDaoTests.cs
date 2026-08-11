@@ -1,6 +1,5 @@
 ﻿using ProphetsWay.Example.DataAccess.Entities;
 using ProphetsWay.Example.DataAccess.IDaos;
-using ProphetsWay.Example.DataAccess.NoDB;
 
 using Shouldly;
 
@@ -12,11 +11,10 @@ using Xunit;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection(TestCollections.CoreEntities)]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class TransactionDaoTests : BaseUnitTests<ITransactionDao>
 	{
-		protected override ITransactionDao GetIExampleDataAccess => new ExampleDataAccess();
-
 		protected static Random Random = new Random();
 
 		public static Transaction NewTransaction => new Transaction { DateOfAction = DateTime.Now, Amount = Random.Next() };

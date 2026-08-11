@@ -30,9 +30,19 @@ namespace ProphetsWay.Example.Tests.ConventionShowcase
 	/// </para>
 	/// <para>
 	/// No <c>[Collection]</c>: none of these Data Access Layers reads or writes the store, so there is no shared
-	/// state to serialise against.
+	/// state to serialise against. They do not come from <see cref="TestDataAccessFactory"/> either - each one
+	/// is the subject of its test rather than the implementation under test, so swapping the suite onto another
+	/// Data Access Layer must leave them exactly as they are.
+	/// </para>
+	/// <para>
+	/// <c>Scope=Dispatcher</c> rather than <c>Contract</c> or <c>Characterization</c>. Those two say whether a
+	/// Data Access Layer implementation has to pass a test; nothing here is about an implementation at all.
+	/// These tests pin the reflection convention in <c>ProphetsWay.BaseDataAccess</c>, so they hold identically
+	/// whatever this repository's Data Access Layer is, and they are the tests a new implementation should read
+	/// rather than run.
 	/// </para>
 	/// </remarks>
+	[Trait("Scope", "Dispatcher")]
 	public class ConventionShowcaseTests
 	{
 		/// <summary>

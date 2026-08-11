@@ -69,6 +69,14 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 	/// separately are independent of each other and of the store.
 	/// </para>
 	///
+	/// <para>
+	/// <b>10.</b> A caller must name a company that exists and a resource that exists. An implementation over a
+	/// store that enforces referential integrity will reject a join naming a row that is not there; the
+	/// exception is the storage layer's own and its type is not specified by this contract. An implementation
+	/// whose store cannot enforce it is not required to check and is still conforming — it is not obliged to
+	/// simulate the check — so a call that succeeds against such a store is no evidence the rows exist.
+	/// </para>
+	///
 	/// <para><b>WHY.</b></para>
 	///
 	/// <para>
@@ -111,6 +119,16 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 	/// implementation to copy on read and on write, so a dictionary-backed store and a database-backed one are
 	/// genuinely interchangeable.
 	/// </para>
+	///
+	/// <para>
+	/// <b>Rule 10 replaces a promise this contract could not keep.</b> It previously said referential integrity
+	/// was the storage layer's concern and that an implementation may or may not enforce it, which left two
+	/// conforming implementations behaving differently for the same call — the exact failure this repository
+	/// exists to disprove. A join table with dangling keys is not something anyone wants in production, and
+	/// telling a caller it may name rows that do not exist teaches a habit that breaks against every real
+	/// database. The rule now binds the caller, and leaves the check itself optional for the stores that cannot
+	/// perform one.
+	/// </para>
 	/// </remarks>
 	public interface ICompanyResourceDao
 	{
@@ -120,7 +138,7 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 		/// <param name="item">
 		/// The join to store. Both <see cref="CompanyResource.CompanyId"/> and
 		/// <see cref="CompanyResource.ResourceId"/> must be set, as together they are the record's only
-		/// identity.
+		/// identity, and each must name a row that exists.
 		/// </param>
 		/// <exception cref="ArgumentNullException">
 		/// Thrown when <paramref name="item"/> is <c>null</c>.
@@ -132,8 +150,12 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 		/// throws nothing.
 		/// </para>
 		/// <para>
-		/// Does not verify that the company or the resource it names exists. Referential integrity is the
-		/// storage layer's concern, and a given implementation may or may not enforce it.
+		/// Under rule 10 the company and the resource named must already exist. An implementation over a store
+		/// that enforces referential integrity will reject a join naming a row that is not there, throwing an
+		/// exception of the storage layer's own whose type this contract does not specify. An implementation
+		/// whose store cannot enforce it is not required to check, so a call that succeeds against such a store
+		/// is no evidence the rows exist, and a caller relying on that leniency is writing code that will not
+		/// port.
 		/// </para>
 		/// </remarks>
 		void Insert(CompanyResource item);
