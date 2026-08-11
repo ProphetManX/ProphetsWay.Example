@@ -69,18 +69,25 @@ namespace ProphetsWay.Example.Tests
 		public delegate void UpdateAssertion(int count);
 		public static (Job Job, UpdateAssertion Assert) Setup_InsertJob_TestUpdate(IJobDao da)
 		{
+			const string editText = "Edited Text, after the insert has completed.";
+
 			var co = NewJob;
 			da.Insert(co);
 
 			var newCo = da.Get(co);
-			newCo.Something = "Edited Text, after the insert has completed.";
+			newCo.Something = editText;
 
 			return (newCo, (count) => {
 				var co2 = da.Get(co);
 
 				count.ShouldBe(1);
 				co.Id.ShouldBe(co2.Id);
-				co.Something.ShouldBe(co2.Something);
+
+				//the edit was made on newCo and submitted through Update, so newCo is the instance to assert
+				//through - co was never edited, and reading the change off it only worked while Get handed back
+				//the store's own instance
+				newCo.Something.ShouldBe(co2.Something);
+				co2.Something.ShouldBe(editText);
 			}
 			);
 		}

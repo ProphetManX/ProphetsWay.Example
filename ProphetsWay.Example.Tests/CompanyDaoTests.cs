@@ -68,18 +68,25 @@ namespace ProphetsWay.Example.Tests
 		public delegate void UpdateAssertion(int count);
 		public static (Company Company, UpdateAssertion Assert) Setup_InsertCompany_TestUpdate(ICompanyDao da)
         {
+			const string editText = "Edited Text, after the insert has completed.";
+
 			var co = NewCompany;
 			da.Insert(co);
 
 			var newCo = da.Get(co);
-			newCo.Other = "Edited Text, after the insert has completed.";
+			newCo.Other = editText;
 
 			return (newCo, (count) => {
 				var co2 = da.Get(co);
 
 				count.ShouldBe(1);
 				co.Id.ShouldBe(co2.Id);
-				co.Other.ShouldBe(co2.Other);
+
+				//the edit was made on newCo and submitted through Update, so newCo is the instance to assert
+				//through - co was never edited, and reading the change off it only worked while Get handed back
+				//the store's own instance
+				newCo.Other.ShouldBe(co2.Other);
+				co2.Other.ShouldBe(editText);
 			}
 			);
         }

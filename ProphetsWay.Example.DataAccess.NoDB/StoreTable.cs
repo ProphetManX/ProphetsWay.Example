@@ -101,26 +101,6 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 			return _rows.Remove(key);
 		}
 
-		/// <summary>
-		/// Edits the stored instance where it lies, rather than replacing it, and records how to put it back.
-		/// </summary>
-		/// <remarks>
-		/// For the custom member that edits one field of a stored row rather than overwriting the row with a
-		/// caller's version of it. Every Dao here copies on the way in, so the instance being edited is reachable
-		/// from nowhere else; the undo entry still gets a deep copy of what was there beforehand.
-		/// </remarks>
-		/// <returns><c>true</c> when a row was edited, <c>false</c> when there was none under that key.</returns>
-		public bool EditInPlace(TransactionLog log, TKey key, Action<TEntity> edit)
-		{
-			if (!_rows.TryGetValue(key, out var row))
-				return false;
-
-			RecordUndo(log, key);
-			edit(row);
-
-			return true;
-		}
-
 		private void RecordUndo(TransactionLog log, TKey key)
 		{
 			if (_rows.TryGetValue(key, out var current))

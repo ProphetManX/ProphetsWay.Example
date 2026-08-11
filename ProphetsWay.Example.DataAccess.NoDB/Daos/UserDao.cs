@@ -35,21 +35,24 @@ namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 		/// <paramref name="user"/> as well - deliberately, and only that value.
 		/// </para>
 		/// <para>
-		/// The stored row is still edited in place rather than replaced, which is why
-		/// <see cref="StoreTable{TKey, TEntity}.EditInPlace"/> exists. Replacing it would read the same from
-		/// outside, so the difference that remains is one of intent: this is a targeted edit to one field of a
-		/// stored row, not a caller's version of the row overwriting it, and the undo entry still captures a deep
-		/// copy of what was there beforehand.
+		/// Nothing happens when no user is stored under that identifier, and in particular the caller's instance
+		/// is left alone: the stamp says the store was changed, so it is only written where it was.
 		/// </para>
 		/// </remarks>
 		public void CustomUserFunctionality(User user)
 		{
 			lock (DataStore.Users.SyncRoot)
 			{
-				var edited = DataStore.Users.EditInPlace(CurrentTransaction, user.Id, stored => stored.Whatever = CustomFunctionalityStamp);
+				if (!DataStore.Users.TryGet(user.Id, out var stored))
+					return;
 
-				if (edited)
-					user.Whatever = CustomFunctionalityStamp;
+				//copied before the edit so the undo entry Save records still holds what was there beforehand
+				var edited = Copy(stored);
+				edited.Whatever = CustomFunctionalityStamp;
+
+				DataStore.Users.Save(CurrentTransaction, user.Id, edited);
+
+				user.Whatever = CustomFunctionalityStamp;
 			}
 		}
 
