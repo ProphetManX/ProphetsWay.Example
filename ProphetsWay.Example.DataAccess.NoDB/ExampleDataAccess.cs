@@ -14,26 +14,51 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 	/// If you choose to do so, you can put all your actual code within this one file and not bother with each separate DAO
 	/// but that is not recommended
 	/// </summary>
-	public class ExampleDataAccess : BaseDataAccess.BaseDataAccess, IExampleDataAccess, IDisposable
+	public class ExampleDataAccess : BaseDataAccess.BaseDataAccess, IExampleDataAccess
 	{
-		private readonly ICompanyDao _companyDao = new CompanyDao();
-		private readonly IJobDao _jobDao = new JobDao();
-		private readonly IUserDao _userDao = new UserDao();
-		private readonly ITransactionDao _transactionDao = new TransactionDao();
-		private readonly IResourceDao _resourceDao = new ResourceDao();
-		private readonly IDepartmentDao _departmentDao = new DepartmentDao();
-		private readonly ICompanyResourceDao _companyResourceDao = new CompanyResourceDao();
+		/// <summary>
+		/// This instance's transaction, and nothing else's.
+		/// </summary>
+		/// <remarks>
+		/// Handed to every Dao below at construction, which is what enrols their writes. It lives on the instance
+		/// rather than on the process-wide <see cref="DataStore"/> deliberately: <c>IBaseDataAccess</c> scopes a
+		/// transaction to the Data Access Layer instance, so another instance writing to the same store at the
+		/// same time is doing work this transaction has no business rolling back.
+		/// </remarks>
+		private readonly TransactionLog _transaction = new TransactionLog();
+
+		private readonly ICompanyDao _companyDao;
+		private readonly IJobDao _jobDao;
+		private readonly IUserDao _userDao;
+		private readonly ITransactionDao _transactionDao;
+		private readonly IResourceDao _resourceDao;
+		private readonly IDepartmentDao _departmentDao;
+		private readonly ICompanyResourceDao _companyResourceDao;
 
 		private bool _disposed;
 
+		public ExampleDataAccess()
+		{
+			//every Dao is built around this instance's transaction, so there is no way for one of them to write
+			//outside it
+			_companyDao = new CompanyDao(_transaction);
+			_jobDao = new JobDao(_transaction);
+			_userDao = new UserDao(_transaction);
+			_transactionDao = new TransactionDao(_transaction);
+			_resourceDao = new ResourceDao(_transaction);
+			_departmentDao = new DepartmentDao(_transaction);
+			_companyResourceDao = new CompanyResourceDao(_transaction);
+		}
+
 		/// <summary>
-		/// Releases what this instance holds, which here is nothing at all.
+		/// Releases what this instance holds, which here is an open transaction and nothing else.
 		/// </summary>
 		/// <remarks>
 		/// <para>
 		/// The Daos above are stateless and <see cref="DataStore"/> is process-wide - it stands in for the
-		/// database, not for a connection to it. So there is nothing to release, and the method's whole job is to
-		/// mark the instance unusable.
+		/// database, not for a connection to it. So the only thing there is to release is a transaction the caller
+		/// left open, and <b>an unclosed transaction is an abandoned one</b>: it is rolled back, never committed,
+		/// and the rollback is not allowed to throw on the way out.
 		/// </para>
 		/// <para>
 		/// <b>Clearing the store here would be the mistake.</b> Disposing one Data Access Layer no more empties
@@ -46,10 +71,14 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		/// transaction - and leaves anything handed to it by the caller alone.
 		/// </para>
 		/// </remarks>
-		public void Dispose()
+		public override void Dispose()
 		{
 			//idempotent: a second call is a no-op rather than an error
+			if (_disposed)
+				return;
+
 			_disposed = true;
+			_transaction.Abandon();
 		}
 
 		/// <summary>
@@ -263,22 +292,33 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 			return _departmentDao.Restore(item);
 		}
 
+		/// <summary>
+		/// Commits everything written through this instance since <see cref="TransactionStart"/>, which for an
+		/// undo log means discarding it - the writes are already in the store.
+		/// </summary>
 		public override void TransactionCommit()
 		{
-			//not implementing these for the example, but you could do something like "context.CommitTransaction"
-			throw new NotImplementedException();
+			ThrowIfDisposed();
+			_transaction.Commit();
 		}
 
+		/// <summary>
+		/// Discards everything written through this instance since <see cref="TransactionStart"/> by replaying the
+		/// undo log in reverse.
+		/// </summary>
 		public override void TransactionRollBack()
 		{
-			//not implementing these for the example, but you could do something like "context.RollbackTransaction"
-			throw new NotImplementedException();
+			ThrowIfDisposed();
+			_transaction.RollBack();
 		}
 
+		/// <summary>
+		/// Opens a transaction over every write made through this instance, whichever Dao makes it.
+		/// </summary>
 		public override void TransactionStart()
 		{
-			//not implementing these for the example, but you could do something like "context.BeginTransaction"
-			throw new NotImplementedException();
+			ThrowIfDisposed();
+			_transaction.Start();
 		}
 
 		public int Update(Company item)

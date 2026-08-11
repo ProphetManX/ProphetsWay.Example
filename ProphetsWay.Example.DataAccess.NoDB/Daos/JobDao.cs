@@ -7,42 +7,48 @@ namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 {
 	internal class JobDao : BaseDao, IJobDao
 	{
+		public JobDao(TransactionLog currentTransaction) : base(currentTransaction)
+		{
+		}
+
 		public int Delete(Job item)
 		{
-			lock (DataStore.Jobs)
-				DataStore.Jobs.Remove(item.Id);
+			lock (DataStore.Jobs.SyncRoot)
+				DataStore.Jobs.Remove(CurrentTransaction, item.Id);
 
 			return 1;
 		}
 
 		public Job Get(Job item)
 		{
-			lock (DataStore.Jobs)
-				if (DataStore.Jobs.ContainsKey(item.Id))
-					return DataStore.Jobs[item.Id];
+			lock (DataStore.Jobs.SyncRoot)
+				if (DataStore.Jobs.TryGet(item.Id, out var stored))
+					return stored;
 
 			return null;
 		}
 
 		public IList<Job> GetAll(Job item)
 		{
-			lock (DataStore.Jobs)
-				return DataStore.Jobs.Values.ToList();
+			lock (DataStore.Jobs.SyncRoot)
+				return DataStore.Jobs.Rows.ToList();
 		}
 
 		public void Insert(Job item)
 		{
-			lock (DataStore.Jobs)
+			lock (DataStore.Jobs.SyncRoot)
 			{
 				item.Id = Random.Next(int.MaxValue);
 
-				DataStore.Jobs.Add(item.Id, item);
+				DataStore.Jobs.Add(CurrentTransaction, item.Id, item);
 			}
 		}
 
 		public int Update(Job item)
 		{
-			DataStore.Jobs[item.Id] = item;
+			lock (DataStore.Jobs.SyncRoot)
+				DataStore.Jobs.Save(CurrentTransaction, item.Id, item);
+
 			return 1;
 		}
 	}

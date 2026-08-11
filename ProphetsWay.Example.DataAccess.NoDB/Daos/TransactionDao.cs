@@ -7,17 +7,21 @@ namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 {
 	internal class TransactionDao : BaseDao, ITransactionDao
 	{
+		public TransactionDao(TransactionLog currentTransaction) : base(currentTransaction)
+		{
+		}
+
 		public int Delete(Transaction item)
 		{
-			lock (DataStore.Transactions)
-				return DataStore.Transactions.Remove(item.Id) ? 1 : 0;
+			lock (DataStore.Transactions.SyncRoot)
+				return DataStore.Transactions.Remove(CurrentTransaction, item.Id) ? 1 : 0;
 		}
 
 		public Transaction Get(Transaction item)
 		{
-			lock (DataStore.Transactions)
-				if (DataStore.Transactions.ContainsKey(item.Id))
-					return DataStore.Transactions[item.Id];
+			lock (DataStore.Transactions.SyncRoot)
+				if (DataStore.Transactions.TryGet(item.Id, out var stored))
+					return stored;
 
 			return null;
 		}
@@ -29,22 +33,24 @@ namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 
 		public IList<Transaction> GetPaged(Transaction item, int skip, int take)
 		{
-			return DataStore.Transactions.Values.Skip(skip).Take(take).ToList();
+			return DataStore.Transactions.Rows.Skip(skip).Take(take).ToList();
 		}
 
 		public void Insert(Transaction item)
 		{
-			lock (DataStore.Transactions)
+			lock (DataStore.Transactions.SyncRoot)
 			{
 				item.Id = Random.Next(int.MaxValue);
 
-				DataStore.Transactions.Add(item.Id, item);
+				DataStore.Transactions.Add(CurrentTransaction, item.Id, item);
 			}
 		}
 
 		public int Update(Transaction item)
 		{
-			DataStore.Transactions[item.Id] = item;
+			lock (DataStore.Transactions.SyncRoot)
+				DataStore.Transactions.Save(CurrentTransaction, item.Id, item);
+
 			return 1;
 		}
 	}
