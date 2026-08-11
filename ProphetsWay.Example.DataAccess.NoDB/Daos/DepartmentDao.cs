@@ -7,18 +7,17 @@ using System.Linq;
 namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 {
 	/// <summary>
-	/// The in-memory implementation of <see cref="IDepartmentDao"/>, and the one Dao in this project that
-	/// copies on the way in and on the way out.
+	/// The in-memory implementation of <see cref="IDepartmentDao"/>, and the Dao the snapshot rule was written
+	/// against before it was extended to the rest of them.
 	/// </summary>
 	/// <remarks>
 	/// <para>
-	/// The other Daos here hand back the very object they are holding, which is the shortest thing that works
-	/// for an in-memory store and is exactly what a database cannot do. Rule 19 of
-	/// <see cref="IDepartmentDao"/> forbids it, so every value crossing this boundary is copied:
-	/// <c>Get</c>, <c>GetAll</c> and <c>GetPaged</c> hand out snapshots, and <c>Insert</c>, <c>Update</c>,
-	/// <c>Delete</c> and <c>Restore</c> read their argument rather than adopting it. The instances inside
-	/// <see cref="DataStore.Departments"/> are therefore reachable from nowhere else, and no caller can see or
-	/// influence them.
+	/// Rule 19 of <see cref="IDepartmentDao"/> is that rule stated per-Dao, so every value crossing this boundary
+	/// is copied: <c>Get</c>, <c>GetAll</c> and <c>GetPaged</c> hand out snapshots, and <c>Insert</c>,
+	/// <c>Update</c>, <c>Delete</c> and <c>Restore</c> read their argument rather than adopting it. The instances
+	/// inside <see cref="DataStore.Departments"/> are therefore reachable from nowhere else, and no caller can
+	/// see or influence them. A <see cref="Department"/> carries scalars only, so its copy has no second level to
+	/// reach.
 	/// </para>
 	/// </remarks>
 	internal class DepartmentDao : BaseDao, IDepartmentDao

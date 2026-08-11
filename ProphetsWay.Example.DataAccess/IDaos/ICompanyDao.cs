@@ -3,6 +3,18 @@ using ProphetsWay.Example.DataAccess.Entities;
 
 namespace ProphetsWay.Example.DataAccess.IDaos
 {
+	/// <summary>
+	/// The Data Access Layer contract for <see cref="Company"/>, adding one custom retrieval alongside the
+	/// paged surface.
+	/// </summary>
+	/// <remarks>
+	/// The Data-Access-Layer-wide snapshot rule on <see cref="IExampleDataAccess"/> binds every member of this
+	/// Data Access Object, <see cref="GetCustomCompanyFunction"/> included. An instance returned by <c>Get</c>,
+	/// <c>GetAll</c>, <c>GetPaged</c> or <see cref="GetCustomCompanyFunction"/> is a snapshot; an instance
+	/// handed to <c>Insert</c>, <c>Update</c> or <c>Delete</c> is read rather than adopted; and stored data
+	/// changes only through those write members, each reading its argument as it stands at the moment of the
+	/// call. See <see cref="IExampleDataAccess"/> for the full statement and for why the rule exists.
+	/// </remarks>
 	public interface ICompanyDao : IBasePagedDao<Company>
 	{
 		Company GetCustomCompanyFunction(int id);

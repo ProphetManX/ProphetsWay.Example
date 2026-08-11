@@ -15,10 +15,10 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 	/// assignments scattered across seven Daos, and enrolling them all would have been a matter of remembering to.
 	/// </para>
 	/// <para>
-	/// An undo entry always holds a <b>copy</b> of the row it puts back. Several Daos here store the very instance
-	/// the caller passed in and hand that same instance back from <c>Get</c>; an undo entry holding a reference to
-	/// one of those would restore an object the caller is still free to edit, and the rollback would then restore
-	/// whatever the caller had since done to it rather than what the store actually held.
+	/// An undo entry always holds a <b>deep copy</b> of the row it puts back, taken through <see cref="Copy"/>.
+	/// A snapshot that shared a navigation node with the live store would record whatever was done to that node
+	/// after the entry was written, and the rollback would then restore the edit rather than reverse it - the
+	/// same failure the snapshot rule exists to prevent, one level down.
 	/// </para>
 	/// </remarks>
 	/// <typeparam name="TKey">The identifier the rows are stored under.</typeparam>
@@ -30,8 +30,8 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		private readonly Func<TEntity, TEntity> _copy;
 
 		/// <param name="copy">
-		/// A field-for-field copy of a row. Used for every undo entry, and offered to the Daos that hand out
-		/// snapshots rather than the stored instance.
+		/// A deep copy of a row. Used for every undo entry, and by every Dao here to copy on the way in and on the
+		/// way out.
 		/// </param>
 		public StoreTable(Func<TEntity, TEntity> copy)
 		{
@@ -62,7 +62,7 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		}
 
 		/// <summary>
-		/// A field-for-field copy of a row, for a Dao that hands out snapshots rather than the stored instance.
+		/// A deep copy of a row, for a Dao handing out a snapshot rather than the stored instance.
 		/// </summary>
 		public TEntity Copy(TEntity row)
 		{
@@ -105,8 +105,9 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		/// Edits the stored instance where it lies, rather than replacing it, and records how to put it back.
 		/// </summary>
 		/// <remarks>
-		/// For the Dao whose caller may be holding that same instance and is expected to see the change. Replacing
-		/// the row would silently break that, so the edit stays in place and only the undo entry gets a copy.
+		/// For the custom member that edits one field of a stored row rather than overwriting the row with a
+		/// caller's version of it. Every Dao here copies on the way in, so the instance being edited is reachable
+		/// from nowhere else; the undo entry still gets a deep copy of what was there beforehand.
 		/// </remarks>
 		/// <returns><c>true</c> when a row was edited, <c>false</c> when there was none under that key.</returns>
 		public bool EditInPlace(TransactionLog log, TKey key, Action<TEntity> edit)

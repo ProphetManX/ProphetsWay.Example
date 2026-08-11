@@ -5,6 +5,14 @@ using System.Linq;
 
 namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 {
+	/// <summary>
+	/// The in-memory implementation of <see cref="IJobDao"/>.
+	/// </summary>
+	/// <remarks>
+	/// It copies on the way in and on the way out, as the snapshot rule on <see cref="IExampleDataAccess"/>
+	/// requires of every Dao here. A <see cref="Job"/> carries scalars only, so its copy has no second level to
+	/// reach - see <see cref="DataStore"/> for the ones that do.
+	/// </remarks>
 	internal class JobDao : BaseDao, IJobDao
 	{
 		public JobDao(TransactionLog currentTransaction) : base(currentTransaction)
@@ -14,42 +22,49 @@ namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 		public int Delete(Job item)
 		{
 			lock (DataStore.Jobs.SyncRoot)
-				DataStore.Jobs.Remove(CurrentTransaction, item.Id);
-
-			return 1;
+				return DataStore.Jobs.Remove(CurrentTransaction, item.Id) ? 1 : 0;
 		}
 
 		public Job Get(Job item)
 		{
 			lock (DataStore.Jobs.SyncRoot)
-				if (DataStore.Jobs.TryGet(item.Id, out var stored))
-					return stored;
-
-			return null;
+				return DataStore.Jobs.TryGet(item.Id, out var stored) ? Copy(stored) : null;
 		}
 
 		public IList<Job> GetAll(Job item)
 		{
 			lock (DataStore.Jobs.SyncRoot)
-				return DataStore.Jobs.Rows.ToList();
+				return DataStore.Jobs.Rows.Select(Copy).ToList();
 		}
 
 		public void Insert(Job item)
 		{
 			lock (DataStore.Jobs.SyncRoot)
 			{
-				item.Id = Random.Next(int.MaxValue);
-
-				DataStore.Jobs.Add(CurrentTransaction, item.Id, item);
+				//the generated identifier is the one value that travels back onto the caller's instance; the
+				//store gets a copy, so nothing else about that instance is adopted
+				item.Id = DataStore.NextJobId();
+				DataStore.Jobs.Add(CurrentTransaction, item.Id, Copy(item));
 			}
 		}
 
 		public int Update(Job item)
 		{
 			lock (DataStore.Jobs.SyncRoot)
-				DataStore.Jobs.Save(CurrentTransaction, item.Id, item);
+			{
+				//the count of rows the write actually changed, as a database would report it
+				if (!DataStore.Jobs.TryGet(item.Id, out _))
+					return 0;
 
-			return 1;
+				DataStore.Jobs.Save(CurrentTransaction, item.Id, Copy(item));
+
+				return 1;
+			}
+		}
+
+		private static Job Copy(Job source)
+		{
+			return DataStore.Jobs.Copy(source);
 		}
 	}
 }

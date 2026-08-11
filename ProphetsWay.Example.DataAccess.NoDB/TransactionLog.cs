@@ -70,6 +70,7 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		/// Reverses everything written since <see cref="Start"/> and leaves no transaction open.
 		/// </summary>
 		/// <exception cref="InvalidOperationException">Thrown when no transaction is open.</exception>
+		/// <exception cref="AggregateException">Thrown when one or more undo entries failed. Every entry was still run.</exception>
 		public void RollBack()
 		{
 			RequireOpen();
@@ -82,7 +83,9 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		/// <remarks>
 		/// Unlike <see cref="RollBack"/> it neither complains when nothing is open nor reports a failure. An
 		/// unclosed transaction is an abandoned one and must not persist, but disposal has to be safe to call from
-		/// a <c>finally</c> block - throwing here would mask whatever exception was already unwinding.
+		/// a <c>finally</c> block - throwing here would mask whatever exception was already unwinding. What it
+		/// swallows is only the report: <see cref="Undo"/> runs every entry before raising one, so a failure part
+		/// way through costs the report and never the rest of the rollback.
 		/// </remarks>
 		public void Abandon()
 		{
@@ -117,12 +120,34 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 		/// Replays the log newest first, so a row written more than once ends up as it was before the first of
 		/// those writes.
 		/// </summary>
+		/// <remarks>
+		/// <b>Every entry runs, whatever the ones before it did.</b> Letting a failed entry abandon the loop would
+		/// leave the store half unwound - some writes reversed, the rest standing - and because the transaction is
+		/// closed on the way out either way, there would be nothing left to finish the job with. A failure is
+		/// collected instead and raised once at the end, so the caller is told what could not be reversed and
+		/// everything that could be, was.
+		/// </remarks>
+		/// <exception cref="AggregateException">Thrown when one or more entries failed.</exception>
 		private void Undo()
 		{
+			List<Exception> failures = null;
+
 			try
 			{
 				while (_undo.Count > 0)
-					_undo.Pop()();
+				{
+					try
+					{
+						_undo.Pop()();
+					}
+					catch (Exception ex)
+					{
+						if (failures == null)
+							failures = new List<Exception>();
+
+						failures.Add(ex);
+					}
+				}
 			}
 			finally
 			{
@@ -130,6 +155,9 @@ namespace ProphetsWay.Example.DataAccess.NoDB
 				_undo.Clear();
 				IsOpen = false;
 			}
+
+			if (failures != null)
+				throw new AggregateException($"{failures.Count} of this transaction's writes could not be reversed. Every undo entry was run; the store is unwound apart from these.", failures);
 		}
 
 		private void RequireOpen()

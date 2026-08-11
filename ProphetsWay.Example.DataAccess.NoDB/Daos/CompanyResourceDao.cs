@@ -11,10 +11,11 @@ namespace ProphetsWay.Example.DataAccess.NoDB.Daos
 	/// and every match made on the (CompanyId, ResourceId) pair.
 	/// </summary>
 	/// <remarks>
-	/// Like <see cref="DepartmentDao"/> and unlike the rest of this project, it copies on the way in and on
-	/// the way out. Rule 9 of <see cref="ICompanyResourceDao"/> is why: the list <c>GetAll</c> hands back and
-	/// every join in it are snapshots, so a caller rewriting either of them cannot move a stored row from one
-	/// pair to another without going through <c>Insert</c> and <c>Delete</c>.
+	/// Like every Dao here it copies on the way in and on the way out. Rule 9 of
+	/// <see cref="ICompanyResourceDao"/> is why: the list <c>GetAll</c> hands back and every join in it are
+	/// snapshots, so a caller rewriting either of them cannot move a stored row from one pair to another without
+	/// going through <c>Insert</c> and <c>Delete</c>. Its two foreign keys are held by value, so the copy has no
+	/// second level to reach.
 	/// </remarks>
 	internal class CompanyResourceDao : BaseDao, ICompanyResourceDao
 	{
