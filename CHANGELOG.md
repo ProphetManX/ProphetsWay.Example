@@ -80,11 +80,11 @@ Two other behavior changes come with it.  ```Update``` against an identifier tha
 return the real number of rows affected instead of a hardcoded ```1```.
 
 ### Now requires ProphetsWay.BaseDataAccess 3.0.0
-Up from 2.3.0, and developed against ```3.0.0-481.Alpha```.  That release makes ```IBaseDataAccess``` extend 
-```IDisposable```, so ```ExampleDataAccess``` now implements ```Dispose```.  It is idempotent, never throws, 
-and rolls back an open transaction.  It deliberately does not clear the in-memory store, because here the 
-store stands in for the database itself rather than for a connection to it.  The generic ```IBaseDataAccess<T>``` 
-form was removed in 3.0.0, so ```IExampleDataAccess``` no longer refers to it.
+Up from 2.3.0.  That release makes ```IBaseDataAccess``` extend ```IDisposable```, so ```ExampleDataAccess``` 
+now implements ```Dispose```.  It is idempotent, never throws, and rolls back an open transaction.  It deliberately 
+does not clear the in-memory store, because here the store stands in for the database itself rather than for 
+a connection to it.  The generic ```IBaseDataAccess<T>``` form was removed in 3.0.0, so ```IExampleDataAccess``` 
+no longer refers to it.
 
 ### Fixed
 - ```GetCustomCompanyFunction``` threw ```DivideByZeroException``` against an empty store, and silently 
@@ -126,7 +126,10 @@ invisible because post-deployment scripts are not validated by the build.
 down from ```net461;net471;net48;net50;net60;net70;net80;net90```, and the tests target ```net48;net8.0;net9.0```.  
 This strands nobody — ```netstandard2.0``` was added in the same change and covers every target dropped.
 - The database project moved from the legacy SSDT format to the ```Microsoft.Build.Sql``` SDK, so the solution 
-builds with ```dotnet build``` for the first time.  It previously failed on the ```.sqlproj```.
+builds with ```dotnet build``` for the first time.  It previously failed on the ```.sqlproj```.  The cost is 
+that neither Visual Studio 2022 nor 2026 can open an SDK-style ```.sqlproj``` — a Visual Studio limitation, 
+not a defect here.  SSMS 22, VS Code and the .NET CLI all work, and a Visual Studio user can otherwise unload 
+the database project and work on the three C# projects, which build and test normally without it.
 - FluentAssertions was replaced with Shouldly, as FluentAssertions 8.x requires a paid commercial licence.
 - Removed unused ```Newtonsoft.Json``` and ```Microsoft.VSSDK.BuildTools``` references, and dropped a 
 ```LangVersion``` pin.

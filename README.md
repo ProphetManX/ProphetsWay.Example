@@ -179,6 +179,12 @@ A SQL Server database project on the `Microsoft.Build.Sql` SDK, so it builds wit
 platform. Deploy it if you want to tinker against a real server. Post-deployment scripts seed the tables so
 the database is not empty; the data is deliberate nonsense.
 
+The SDK-style format comes with a tooling constraint: **Visual Studio 2022 and Visual Studio 2026 cannot
+open an SDK-style `.sqlproj`.** Both are limited to the legacy SSDT project format, which targets
+.NET Framework 4.x — a limitation of Visual Studio's SQL project system, not of this project. SSMS 22,
+VS Code and the .NET CLI all handle it. See
+[Building & Testing Locally](#building--testing-locally) for what to do if Visual Studio is your editor.
+
 #### ProphetsWay.Example.Tests
 
 The most useful part of the repository. xUnit and Shouldly, 160 tests, run across `net48`, `net8.0` and
@@ -208,8 +214,8 @@ Install-Package ProphetsWay.BaseDataAccess
 ```
 
 Targets: the two data access layer projects build for `netstandard2.0`, `net48`, `net8.0` and `net9.0`; the
-test project runs on `net48`, `net8.0` and `net9.0`. The solution references `ProphetsWay.BaseDataAccess`
-3.0.0, currently pinned to the `3.0.0-481.Alpha` prerelease.
+test project runs on `net48`, `net8.0` and `net9.0`. The solution references the released
+`ProphetsWay.BaseDataAccess` 3.0.0.
 
 ---
 
@@ -572,6 +578,29 @@ dotnet test --filter "Scope=Dispatcher"
 
 To tinker against real SQL Server, publish `ProphetsWay.Example.Database`.
 
+### If you open this in Visual Studio
+
+Visual Studio 2022 and Visual Studio 2026 cannot open `ProphetsWay.Example.Database`. Both are limited to
+the legacy SSDT project format, which targets .NET Framework 4.x, and this project is SDK-style. The
+solution file compounds it: it still registers the project under the legacy SSDT project type GUID
+(`{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}`) while the project file itself is SDK-style, so Visual Studio
+reaches for the legacy project system and then fails, typically with a target framework error mentioning
+`net472`.
+
+| Tool | Database project |
+|---|---|
+| .NET CLI (`dotnet build`) | Works, on any OS, and produces the `.dacpac` |
+| VS Code | Works |
+| SSMS 22 | Works — opens the project and builds the solution. The supported GUI path |
+| Visual Studio 2022 / 2026 | Cannot open it |
+
+You have three options:
+
+- Use SSMS 22 or VS Code for the database project.
+- Unload the database project in Visual Studio and work on the three C# projects. They build and test
+  normally without it.
+- Convert the `.sqlproj` back to the legacy SSDT format, giving up cross-platform CLI builds.
+
 ### Known gaps
 
 - The database project has tables for `Companies`, `Jobs`, `Users`, `Transactions` and `Resources`. It has
@@ -579,6 +608,8 @@ To tinker against real SQL Server, publish `ProphetsWay.Example.Database`.
   a SQL-backed implementation of `IExampleDataAccess` has to add them.
 - Uncommitted writes are visible to other DAL instances — see
   [Transactions](#transactions).
+- The database project does not open in Visual Studio — see
+  [If you open this in Visual Studio](#if-you-open-this-in-visual-studio).
 
 ---
 
