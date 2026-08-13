@@ -1,15 +1,15 @@
 using ProphetsWay.Example.DataAccess;
 using ProphetsWay.Example.DataAccess.Entities;
-using ProphetsWay.Example.DataAccess.NoDB;
 using Xunit;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("Base Tests")]
+	//Touches Company, User, Job, Transaction and Resource, and asserts over whole-set counts while doing it,
+	//so it runs single file alongside every other class that reaches the store - see TestCollections.
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class BaseDataAccessTests : BaseUnitTests<IExampleDataAccess>
 	{
-		protected override IExampleDataAccess GetIExampleDataAccess => new ExampleDataAccess();
-
 		[Fact]
 		public void ShouldGetGenericTypes()
 		{

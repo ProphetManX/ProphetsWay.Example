@@ -3,6 +3,8 @@ GO
 
 SET IDENTITY_INSERT dbo.Companies ON
 
+--Insert and update only. Rows outside this seed set are removed by PurgeSeedData.sql, which runs
+--child-to-parent ahead of every seed - an order this MERGE is in no position to know about.
 MERGE dbo.Companies AS Target
 USING (VALUES
 	(1, 'ACME', 'Great Products for a Great Price!'), 
@@ -19,9 +21,7 @@ WHEN NOT MATCHED BY Target THEN
 		Source.Id, 
 		Source.Name, 
 		Source.Other
-	)
-WHEN NOT MATCHED BY Source THEN
-	DELETE;
+	);
 
 SET IDENTITY_INSERT dbo.Companies OFF
 

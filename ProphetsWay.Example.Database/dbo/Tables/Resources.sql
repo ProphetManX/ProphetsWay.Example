@@ -1,6 +1,6 @@
 ﻿CREATE TABLE [dbo].[Resources]
 (
 	[Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT newid(), 
-	[Name] VARCHAR(50) NOT NULL, 
+	[Name] VARCHAR(MAX) NULL, 
 	[Description] VARCHAR(MAX) NULL
 )

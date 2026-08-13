@@ -1,8 +1,7 @@
-﻿using FluentAssertions;
-
-using ProphetsWay.Example.DataAccess.Entities;
+﻿using ProphetsWay.Example.DataAccess.Entities;
 using ProphetsWay.Example.DataAccess.IDaos;
-using ProphetsWay.Example.DataAccess.NoDB;
+
+using Shouldly;
 
 using System;
 using System.Collections.Generic;
@@ -12,11 +11,10 @@ using Xunit;
 
 namespace ProphetsWay.Example.Tests
 {
-    [Collection("Transaction Dao Tests")]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class TransactionDaoTests : BaseUnitTests<ITransactionDao>
 	{
-		protected override ITransactionDao GetIExampleDataAccess => new ExampleDataAccess();
-
 		protected static Random Random = new Random();
 
 		public static Transaction NewTransaction => new Transaction { DateOfAction = DateTime.Now, Amount = Random.Next() };
@@ -31,7 +29,7 @@ namespace ProphetsWay.Example.Tests
 			_da.Insert(t);
 
 			//assert
-			t.Id.Should().NotBe(default);
+			t.Id.ShouldNotBe(default);
 		}
 
 		public static (long TransactionId, Func<Transaction, int> Assertion) SetupShouldGetTransaction(ITransactionDao dao)
@@ -41,11 +39,13 @@ namespace ProphetsWay.Example.Tests
 
 			return (t.Id, (t2) =>
 			{
-				//checking with error threshold, because of accuracy differences in how DB stores datetime values
+				//checking with error threshold, because of accuracy differences in how DB stores datetime values.
+				//Duration() makes it a tolerance in both directions - a signed difference lets a retrieved stamp
+				//that is earlier than the original through however far off it is.
 				var diff = t2.DateOfAction - t.DateOfAction;
 				var errThreshold = TimeSpan.FromMilliseconds(10);
-				diff.Should().BeLessThanOrEqualTo(errThreshold);
-				t2.Amount.Should().Be(t.Amount);
+				diff.Duration().ShouldBeLessThanOrEqualTo(errThreshold);
+				t2.Amount.ShouldBe(t.Amount);
 
 				return 1;
 			}
@@ -79,8 +79,8 @@ namespace ProphetsWay.Example.Tests
 			var t2 = _da.Get(t);
 
 			//assert
-			count.Should().Be(1);
-			t2.Amount.Should().Be(editAmount);
+			count.ShouldBe(1);
+			t2.Amount.ShouldBe(editAmount);
 		}
 
 		[Fact]
@@ -95,8 +95,8 @@ namespace ProphetsWay.Example.Tests
 			var co2 = _da.Get(co);
 
 			//assert
-			count.Should().Be(1);
-			co2.Should().BeNull();
+			count.ShouldBe(1);
+			co2.ShouldBeNull();
 		}
 
 		public static Func<int, int> SetupShouldGetCount(ITransactionDao dao)
@@ -110,7 +110,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (count) =>
 			{
-				count.Should().BeGreaterThanOrEqualTo(3);
+				count.ShouldBeGreaterThanOrEqualTo(3);
 				return 1;
 			};
 		}
@@ -139,9 +139,9 @@ namespace ProphetsWay.Example.Tests
 
 			return (count, all, subset) =>
 			{
-				all.Count.Should().Be(count);
-				subset.Count().Should().Be(1);
-				subset.First().Id.Should().Be(all.Skip(1).First().Id);
+				all.Count.ShouldBe(count);
+				subset.Count().ShouldBe(1);
+				subset.First().Id.ShouldBe(all.Skip(1).First().Id);
 				return 1;
 			};
 		}

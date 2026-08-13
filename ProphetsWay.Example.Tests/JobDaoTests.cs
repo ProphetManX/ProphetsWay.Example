@@ -3,17 +3,15 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using ProphetsWay.Example.DataAccess.Entities;
-using FluentAssertions;
+using Shouldly;
 using ProphetsWay.Example.DataAccess.IDaos;
-using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("Job Dao Tests")]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class JobDaoTests : BaseUnitTests<IJobDao>
 	{
-		protected override IJobDao GetIExampleDataAccess => new ExampleDataAccess();
-
 		public static Job NewJob => new Job { Name = $"Bob {Guid.NewGuid()}" };
 
 
@@ -22,7 +20,7 @@ namespace ProphetsWay.Example.Tests
 		{
 			return (NewJob, (Job co) =>
 			{
-				co.Id.Should().NotBe(default);
+				co.Id.ShouldNotBe(default);
 			}
 			);
 		}
@@ -48,7 +46,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (co.Id, (Job co2) =>
 			{
-				co2.Name.Should().Be(co.Name);
+				co2.Name.ShouldBe(co.Name);
 			}
 			);
 		}
@@ -69,18 +67,25 @@ namespace ProphetsWay.Example.Tests
 		public delegate void UpdateAssertion(int count);
 		public static (Job Job, UpdateAssertion Assert) Setup_InsertJob_TestUpdate(IJobDao da)
 		{
+			const string editText = "Edited Text, after the insert has completed.";
+
 			var co = NewJob;
 			da.Insert(co);
 
 			var newCo = da.Get(co);
-			newCo.Something = "Edited Text, after the insert has completed.";
+			newCo.Something = editText;
 
 			return (newCo, (count) => {
 				var co2 = da.Get(co);
 
-				count.Should().Be(1);
-				co.Id.Should().Be(co2.Id);
-				co.Something.Should().Be(co2.Something);
+				count.ShouldBe(1);
+				co.Id.ShouldBe(co2.Id);
+
+				//the edit was made on newCo and submitted through Update, so newCo is the instance to assert
+				//through - co was never edited, and reading the change off it only worked while Get handed back
+				//the store's own instance
+				newCo.Something.ShouldBe(co2.Something);
+				co2.Something.ShouldBe(editText);
 			}
 			);
 		}
@@ -106,9 +111,9 @@ namespace ProphetsWay.Example.Tests
 
 			return (co, (int count) =>
 			{
-				count.Should().Be(1);
+				count.ShouldBe(1);
 				var freshQueryCo = da.Get(co);
-				freshQueryCo.Should().BeNull();
+				freshQueryCo.ShouldBeNull();
 			}
 			);
 		}
@@ -152,10 +157,10 @@ namespace ProphetsWay.Example.Tests
 
 			return (all) =>
 			{
-				all.Count.Should().BeGreaterThanOrEqualTo(3);
-				all.Where(x => x.Name == co.Name).Count().Should().Be(1);
-				all.Where(x => x.Name == co1.Name).Count().Should().Be(1);
-				all.Where(x => x.Name == co2.Name).Count().Should().Be(1);
+				all.Count.ShouldBeGreaterThanOrEqualTo(3);
+				all.Where(x => x.Name == co.Name).Count().ShouldBe(1);
+				all.Where(x => x.Name == co1.Name).Count().ShouldBe(1);
+				all.Where(x => x.Name == co2.Name).Count().ShouldBe(1);
 			};
 		}
 

@@ -3,17 +3,19 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using ProphetsWay.Example.DataAccess.Entities;
-using FluentAssertions;
+using Shouldly;
 using ProphetsWay.Example.DataAccess.IDaos;
-using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("Company Dao Tests")]
+	/// <summary>
+	/// The <see cref="ICompanyDao"/> contract, plus the one member of it whose behaviour is this
+	/// implementation's own invention. The traits are on the methods rather than on the class for that reason -
+	/// see <see cref="ShouldGetCustomCompanyFunction"/>.
+	/// </summary>
+	[Collection(TestCollections.SharedStore)]
 	public class CompanyDaoTests : BaseUnitTests<ICompanyDao>
 	{
-		protected override ICompanyDao GetIExampleDataAccess => new ExampleDataAccess();
-
 		public static Company NewCompany => new Company{ Name = $"Bob {Guid.NewGuid()}" };
 
 		public delegate void InsertAssertion(Company co);
@@ -21,12 +23,13 @@ namespace ProphetsWay.Example.Tests
         {
 			return (NewCompany, (Company co) =>
 			{
-				co.Id.Should().NotBe(default);
+				co.Id.ShouldNotBe(default);
 			}
 			);
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldInsertCompany()
 		{
 			//setup
@@ -47,12 +50,13 @@ namespace ProphetsWay.Example.Tests
 
 			return (co.Id, (Company co2) =>
 			{
-				co2.Name.Should().Be(co.Name);
+				co2.Name.ShouldBe(co.Name);
 			}
 			);
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldGetCompany()
 		{
 			//setup
@@ -68,23 +72,31 @@ namespace ProphetsWay.Example.Tests
 		public delegate void UpdateAssertion(int count);
 		public static (Company Company, UpdateAssertion Assert) Setup_InsertCompany_TestUpdate(ICompanyDao da)
         {
+			const string editText = "Edited Text, after the insert has completed.";
+
 			var co = NewCompany;
 			da.Insert(co);
 
 			var newCo = da.Get(co);
-			newCo.Other = "Edited Text, after the insert has completed.";
+			newCo.Other = editText;
 
 			return (newCo, (count) => {
 				var co2 = da.Get(co);
 
-				count.Should().Be(1);
-				co.Id.Should().Be(co2.Id);
-				co.Other.Should().Be(co2.Other);
+				count.ShouldBe(1);
+				co.Id.ShouldBe(co2.Id);
+
+				//the edit was made on newCo and submitted through Update, so newCo is the instance to assert
+				//through - co was never edited, and reading the change off it only worked while Get handed back
+				//the store's own instance
+				newCo.Other.ShouldBe(co2.Other);
+				co2.Other.ShouldBe(editText);
 			}
 			);
         }
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldUpdateCompany()
 		{
 			//setup
@@ -105,15 +117,16 @@ namespace ProphetsWay.Example.Tests
 
 			return (co, (int count) =>
 			{
-				count.Should().Be(1);
+				count.ShouldBe(1);
 				var freshQueryCo = da.Get(co);
-				freshQueryCo.Should().BeNull();
+				freshQueryCo.ShouldBeNull();
 			}
 			);
 		}
 
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldDeleteCompany()
 		{
 			//setup
@@ -138,11 +151,12 @@ namespace ProphetsWay.Example.Tests
 
 			return (count) =>
 			{
-				count.Should().BeGreaterThanOrEqualTo(3);
+				count.ShouldBeGreaterThanOrEqualTo(3);
 			};
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldGetCount()
 		{
 			//setup
@@ -167,13 +181,14 @@ namespace ProphetsWay.Example.Tests
 
 			return (count, all, subset) =>
 			{
-				all.Count.Should().Be(count);
-				subset.Count.Should().Be(1);
-				subset.First().Id.Should().Be(all.Skip(1).First().Id);
+				all.Count.ShouldBe(count);
+				subset.Count.ShouldBe(1);
+				subset.First().Id.ShouldBe(all.Skip(1).First().Id);
 			};
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldGetPagedView()
 		{
 			//setup
@@ -188,7 +203,15 @@ namespace ProphetsWay.Example.Tests
 			assertion(count, view, subset);
 		}
 
+		/// <summary>
+		/// <see cref="ICompanyDao.GetCustomCompanyFunction"/> stands in for whatever query a real Data Access
+		/// Object would add beyond the surface it inherits, and the interface says nothing whatsoever about what
+		/// its argument means. This implementation reads it as a position in the set and wraps round the end, so
+		/// asking for 100 against three stored companies returns one of them; an implementation that read it as
+		/// an identifier would return <c>null</c> here and be equally conforming.
+		/// </summary>
 		[Fact]
+		[Trait("Scope", "Characterization")]
 		public void ShouldGetCustomCompanyFunction()
 		{
 			//setup
@@ -203,7 +226,7 @@ namespace ProphetsWay.Example.Tests
 			var custom = _da.GetCustomCompanyFunction(100);
 
 			//assert
-			custom.Should().NotBeNull();
+			custom.ShouldNotBeNull();
 		}
 	}
 }

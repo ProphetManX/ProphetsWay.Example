@@ -1,10 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>
-			net461;net471;net48;
-			net50;net60;net70;net80;net90;
-		</TargetFrameworks>
+		<TargetFrameworks>netstandard2.0;net48;net8.0;net9.0</TargetFrameworks>
 	  
 		<!-- Assembly Override Properties -->
 		<PackageRequireLicenseAcceptance />
@@ -27,12 +24,11 @@
 		<FileVersion />
 		<InformationalVersion />
 
-		<LangVersion>8.0</LangVersion>
 		<NullableContextOptions>enable</NullableContextOptions>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ProphetsWay.BaseDataAccess" Version="2.3.0" />
+		<PackageReference Include="ProphetsWay.BaseDataAccess" Version="3.0.0" />
 	</ItemGroup>
 
 

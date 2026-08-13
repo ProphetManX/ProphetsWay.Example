@@ -3,17 +3,15 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using ProphetsWay.Example.DataAccess.Entities;
-using FluentAssertions;
+using Shouldly;
 using ProphetsWay.Example.DataAccess.IDaos;
-using ProphetsWay.Example.DataAccess.NoDB;
 
 namespace ProphetsWay.Example.Tests
 {
-	[Collection("Resource Dao Tests")]
+	[Collection(TestCollections.SharedStore)]
+	[Trait("Scope", "Contract")]
 	public class ResourceDaoTests : BaseUnitTests<IResourceDao>
 	{
-		protected override IResourceDao GetIExampleDataAccess => new ExampleDataAccess();
-
 		[Fact]
 		public void ShouldInsertResource()
 		{
@@ -24,7 +22,7 @@ namespace ProphetsWay.Example.Tests
 			_da.Insert(co);
 
 			//assert
-			co.Id.Should().NotBe(default(Guid));
+			co.Id.ShouldNotBe(default(Guid));
 		}
 
 		public delegate void GetAssertion(Resource co);
@@ -35,7 +33,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (co.Id, (co2) =>
 			{
-				co2.Name.Should().Be(co.Name);
+				co2.Name.ShouldBe(co.Name);
 			}
 			);
 		}
@@ -67,8 +65,8 @@ namespace ProphetsWay.Example.Tests
 			var co2 = _da.Get(co);
 
 			//assert
-			count.Should().Be(1);
-			co2.Name.Should().Be(editText);
+			count.ShouldBe(1);
+			co2.Name.ShouldBe(editText);
 
 		}
 
@@ -84,8 +82,8 @@ namespace ProphetsWay.Example.Tests
 			var co2 = _da.Get(co);
 
 			//assert
-			count.Should().Be(1);
-			co2.Should().BeNull();
+			count.ShouldBe(1);
+			co2.ShouldBeNull();
 		}
 
 		[Fact]
@@ -113,10 +111,10 @@ namespace ProphetsWay.Example.Tests
 
 			return (all) =>
 			{
-				all.Count.Should().BeGreaterThanOrEqualTo(3);
-				all.Where(x => x.Name == co.Name).Count().Should().Be(1);
-				all.Where(x => x.Name == co1.Name).Count().Should().Be(1);
-				all.Where(x => x.Name == co2.Name).Count().Should().Be(1);
+				all.Count.ShouldBeGreaterThanOrEqualTo(3);
+				all.Where(x => x.Name == co.Name).Count().ShouldBe(1);
+				all.Where(x => x.Name == co1.Name).Count().ShouldBe(1);
+				all.Where(x => x.Name == co2.Name).Count().ShouldBe(1);
 			};
 		}
 
