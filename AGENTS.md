@@ -247,6 +247,10 @@ against completely different DAL implementations with no changes.
 Because its job is to be *read*, clarity beats cleverness here. Prefer obvious code over concise
 code, and keep the domain model small enough to hold in your head.
 
+As of **3.0.0** it is also an **executable specification**: `IExampleDataAccess` carries two
+DAL-wide contract rules in its `<remarks>`, and the test suite is partitioned by a `Scope` trait so
+a newly written DAL can run the subset it is actually bound by.
+
 ### The Point It Proves
 
 `ProphetsWay.Example.DataAccess` defines the domain and DAO interfaces. `ProphetsWay.Example.Tests`
@@ -255,33 +259,110 @@ EFTools repo, `ProphetsWay.Example.DataAccess.EF` is a second implementation of 
 **The same tests pass against both** — that is the entire argument for the paradigm, and it is the
 thing any documentation of this repo must lead with.
 
+`ProphetsWay.Example.Tests/TestDataAccessFactory.cs` is the **only** file in the suite that names a
+concrete implementation. Changing the single `return` in `Create` repoints all 160 tests. Do not
+introduce a second construction site — doing so silently destroys the property this repo exists to
+demonstrate.
+
 ### Layout
 
 | Project | Role |
 |---|---|
 | `ProphetsWay.Example.DataAccess/` | Domain — `Entities/`, `IDaos/`, `Enums/`, `IExampleDataAccess` |
-| `ProphetsWay.Example.DataAccess.NoDB/` | In-memory DAL implementation (`DataStore`, `Daos/`) |
-| `ProphetsWay.Example.Database/` | SQL database project |
-| `ProphetsWay.Example.Tests/` | xUnit tests written against the interfaces, not an implementation |
+| `ProphetsWay.Example.DataAccess.NoDB/` | In-memory DAL implementation (`DataStore`, `StoreTable`, `StoreList`, `TransactionLog`, `Daos/`) |
+| `ProphetsWay.Example.Database/` | SQL database project — SDK-style `Microsoft.Build.Sql/2.2.0` |
+| `ProphetsWay.Example.Tests/` | xUnit + Shouldly, 160 tests written against the interfaces, not an implementation |
+
+TFMs are `netstandard2.0;net48;net8.0;net9.0` for both DAL projects and `net48;net8.0;net9.0` for
+the tests — the house standard, in canonical dotted form. **This repo is the TFM reference; copy it
+rather than the older repos.**
 
 ### Domain Model
 
-`Company`, `Job`, `Resource`, `Transaction`, `User`, plus `Roles`. Each has a matching `I*Dao` and
-a DAO implementation per DAL. Adding an entity means touching all of these — and the mirrored copy
-inside the EFTools repo.
+Seven entities, each with a matching `I*Dao` and one DAO implementation per DAL. The mapping is
+complete and symmetrical in both directions — adding an entity means touching all three layers plus
+the database project.
 
-Namespaces follow the folder structure: `ProphetsWay.Example.DataAccess.Entities`,
-`.IDaos`, `.Enums`, `.DataAccess.NoDB.Daos`, `.Tests`.
+| Entity | Marker | Identifier | Shows |
+|---|---|---|---|
+| `Company` | `BaseIntEntity` | `int` | Paged DAO plus a custom method |
+| `Job` | `BaseIntEntity` | `int` | `GetAll` only |
+| `User` | `BaseIntEntity` | `int` | `IBaseDao<T>` plus a custom method; navigation properties |
+| `Transaction` | `IBaseIdEntity<long>` | `long` | A non-`int` key; the deepest object graph |
+| `Resource` | `IBaseIdEntity<Guid>` | `Guid` | A client-generated key |
+| `Department` | `BaseIntEntity, IBaseSoftIdEntity<int>` | `int` | **Soft delete**, plus custom `Restore`; 19 numbered contract rules |
+| `CompanyResource` | `IBaseEntity` | **none** | **A keyless join entity** whose DAO inherits no `IBaseDao<T>` at all; 10 numbered rules |
+
+`Department` and `CompanyResource` are new in 3.0.0 and exist to mark the edges of the paradigm.
+Namespaces follow the folder structure: `ProphetsWay.Example.DataAccess.Entities`, `.IDaos`,
+`.Enums`, `.DataAccess.NoDB.Daos`, `.Tests`.
+
+### Behavioral Contracts Worth Knowing
+
+Read these before changing a DAO or writing a second implementation. The XML `<remarks>` are the
+source of truth; this is an index, not a restatement.
+
+- **The snapshot rule**, on `IExampleDataAccess`, binds every DAO: reads return **deep** snapshots
+  and writes read their argument rather than adopting it. It is what makes an in-memory store and a
+  database interchangeable, and it is what lets a rollback actually reverse an `Update`. An
+  implementation that hands back the instance it is holding fails this.
+- **The ordering rule**, also on `IExampleDataAccess`: order is unspecified but **stable**, so paged
+  windows partition a full pass with no overlap or omission. A SQL-backed DAL satisfies this only
+  with an explicit `ORDER BY` — omit it and the suite passes today and fails intermittently at some
+  future row count.
+- **Transactions are scoped to the DAL instance, not the store.** `TransactionLog` is an instance
+  field on `ExampleDataAccess` deliberately. Moving it to `DataStore` would let one instance roll
+  back another's writes.
+- **`Dispose` releases what the instance created and nothing else.** It never clears `DataStore` —
+  disposing a DAL no more empties the database than closing one connection does. Every test in the
+  suite disposes an instance, so a store-clearing `Dispose` would delete rows out from under
+  concurrently running tests.
+- **The `Scope` trait partition is load-bearing**, and every test carries one:
+  `Contract` (138) is what any conforming implementation must pass; `Characterization` (2) pins
+  choices this implementation made that the contract does not require; `Dispatcher` (20) exercises
+  the reflection convention in `ProphetsWay.BaseDataAccess` itself and belongs to no DAL. Adding a
+  test without a trait breaks `dotnet test --filter "Scope=Contract"` as a usable gate.
+- **The `ConventionShowcase/` DALs are deliberately mis-wired.** They are the subject under test,
+  not the implementation under test, and they construct themselves rather than using the factory.
+  Do not "fix" them.
+
+### 3.0.0 Coverage — What Is and Is Not Demonstrated
+
+Demonstrated: `IDisposable` on the DAL, idempotent non-throwing `Dispose`, `ObjectDisposedException`
+from every other member, disposal rolling back an open transaction, all three transaction members,
+no nesting, per-instance transaction scope, unwrapped exception propagation (with an explicit
+`ShouldNotBeOfType<TargetInvocationException>()` regression guard), and `Get<T>(null)` throwing
+`ArgumentException` on a non-nullable value-type identifier.
+
+**Not demonstrated** — do not report these as discoveries:
+
+| Gap | Why |
+|---|---|
+| `Get<T>(null)` being *accepted* where the identifier is a reference type or nullable value type | Every entity here keys on `int`, `long`, or `Guid`. Only the throwing half of the split is shown. **The most useful gap to close.** |
+| Value-type (`struct`) entities and their inability to express "not found" as `null` | No struct entity exists |
+| Bare `IBaseSoftEntity` — soft delete without an identifier | `Department` is `IBaseSoftIdEntity<int>`; the soft × keyless corner is empty |
+| Ambient `TransactionScope` being left untouched | No `System.Transactions` reference; hard to show meaningfully in-memory |
 
 ### Known Deviations
 
 | # | Deviation | Notes |
 |---|---|---|
-| 1 | **This repo is duplicated inside `ProphetsWay.EFTools`** | `ProphetsWay.EFTools/ProphetsWay.Example/` contains a copy of `ProphetsWay.Example.DataAccess`, `.DataAccess.NoDB`, and `.Tests`. The two copies drift independently. **Before editing anything here, check whether the same edit is needed in the EFTools copy.** This is the largest open architectural question in the workspace. |
-| 2 | Has `app-variables.yml` / `local-pipeline.yml` despite not being published | Correct if the pipeline is only building and testing. Verify `PostTargetToNuGet` is not `'yes'`. |
-| 3 | Not packaged | Correct and intentional. Packaging metadata is not required here. |
+| 1 | **`ProphetsWay.EFTools` consumes this repo as a git submodule** | **It is a submodule, not a vendored copy — earlier versions of this file said otherwise and were wrong.** `ProphetsWay.EFTools/.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The two therefore **cannot drift**; the submodule is simply *pinned*, currently to `origin/main` at the 3.0.0 branch point. The real consequence is a **coordination requirement, not a duplication problem**: EFTools has picked up none of the 3.0.0 work, so until its pointer is advanced and `ProphetsWay.Example.DataAccess.EF` is updated, the EF implementation does not satisfy the current `IExampleDataAccess`. Never edit files under `ProphetsWay.EFTools/ProphetsWay.Example/` — edit here and advance the pointer. |
+| 2 | Has `app-variables.yml` / `local-pipeline.yml` despite not being published | **Correct and verified.** `PostTargetToNuGet` and `TargetProject` are both commented out; the pipeline builds and tests only. |
+| 3 | Not packaged; packaging metadata is empty stubs | Correct and intentional. A teaching artifact is not a package — do not fill these in. |
+| 4 | `<NullableContextOptions>enable</NullableContextOptions>` in `ProphetsWay.Example.DataAccess.csproj` | **Inert.** That was the .NET Core 3.0 *preview* name for what shipped as `<Nullable>`; MSBuild ignores it, so nullable reference types are not actually on. `.NoDB` does not declare it at all. Cosmetic, but misleading in a repo meant to be read. |
+| 5 | Visual Studio cannot open the SDK-style `.sqlproj` | A VS 2022/2026 limitation, not a defect. The migration is what makes `dotnet build` work on the solution at all. VS Code, SSMS 22, and the .NET CLI are fine; a VS user can unload the database project and work on the three C# projects normally. |
+| 6 | `ProphetsWay.Example.localhost.publish.xml` is committed and names an internal host | `Data Source=Terebellum`, Integrated Security — **no credentials**, so not a secret leak, but it is a per-developer file in a shared repo. |
+
+Deviations previously listed here about duplicated projects drifting independently are **resolved
+and were factually wrong**; do not reinstate them.
 
 ### Documentation Angle
 
 When writing this repo's README, the reader is someone evaluating whether the BaseDataAccess
 paradigm is worth adopting. Lead with the swap-the-DAL demonstration, not with a project listing.
+
+Two things the current README should gain: an onboarding note that Visual Studio cannot load the
+SDK-style database project (and what to do about it), and a correction to the claim that EFTools
+runs the same suite unchanged — true of `main`, not true of 3.0.0 until EFTools advances its
+submodule pointer.
