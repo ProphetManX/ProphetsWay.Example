@@ -34,6 +34,7 @@ them, because duplicated rules drift.
 | 6 | [The committed developer-specific publish profile](#6--the-committed-developer-specific-publish-profile) | **Done** — genericized in v3.1.0, file kept |
 | 7 | [A Visual Studio onboarding note in the README](#7--a-visual-studio-onboarding-note-in-the-readme) | **Proposed** — trivial, high leverage |
 | 8 | [Selecting the implementation from configuration instead of a code edit](#8--selecting-the-implementation-from-configuration-instead-of-a-code-edit) | **Rejected** — decided in code comments already |
+| 9 | [Seed data for `Resources`, `Departments` and `CompanyResources`](#9--seed-data-for-resources-departments-and-companyresources) | **Deferred** — revisit with [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) |
 
 Numbers are permanent. Entries are never renumbered and never removed —
 [purpose-and-scope.md](purpose-and-scope.md) cites entries by number, and a rejected entry is decision history
@@ -80,6 +81,7 @@ in this folder. No contract, entity, Data Access Object interface, or test chang
 | 6 | Done | **Yes — landed** | The hostname was genericized in place. No `.cs` file changed, so the retarget's evidence is intact |
 | 7 | Proposed | Technically yes — **but no** | README-only and non-breaking, so a documentation release is the right home for it. Left out because the README is `README Author`'s file and no pass has run |
 | 8 | Rejected | n/a | Decided against |
+| 9 | Deferred | **No** | Nothing to land, and the deployed database is not exercised by any test in this repository |
 
 **The honest answer is none, apart from entry 6** — which changed one attribute value in a publish profile and
 no test at all. That is the correct outcome for a release whose evidence is "the same 160 tests still pass";
@@ -365,3 +367,98 @@ one test run. That is not the current architecture and should not become it; see
 implementation" row in [purpose-and-scope.md](purpose-and-scope.md#out-of-scope-and-where-it-should-live-instead).
 A real product built on this paradigm should absolutely do the configuration-driven thing, and the remarks
 already say so.
+
+---
+
+## 9 — Seed data for `Resources`, `Departments` and `CompanyResources`
+
+**Status:** Deferred. Real, cheap, and already half-planned in the source — but it buys nothing until a
+database-backed implementation exists to consume it, which is [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts).
+
+### The gap
+
+[`PostDeploymentStart.sql`](../ProphetsWay.Example.Database/PostBuildScripts/PostDeploymentStart.sql) invokes
+four seed scripts — `CreateCompanies`, `CreateJobs`, `CreateUsers`, `CreateTransactions`. `PostBuildScripts/`
+contains those four plus `CreateDbUser.sql`, `PurgeSeedData.sql` and `PostDeploymentStart.sql` itself, and
+**no seed script for `Resources`, `Departments` or `CompanyResources`.** Deploy the database and three of the
+seven tables come up empty.
+
+Two details sharpen it:
+
+- [`PurgeSeedData.sql`](../ProphetsWay.Example.Database/PostBuildScripts/PurgeSeedData.sql) **already documents
+  this gap and states where closing it would go** — "Departments and Resources are parents in that graph but
+  have no seed script, so their rows are not ours to remove. If either is ever seeded, its purge belongs here —
+  Departments after Users, Resources after CompanyResources." `CompanyResources` is already purged despite never
+  being seeded, because leaving it populated blocks the `Companies` purge outright. The ordering work is done;
+  only the `MERGE`s are missing.
+- [`CreateUsers.sql`](../ProphetsWay.Example.Database/PostBuildScripts/CreateUsers.sql) does not carry
+  `DepartmentId` in its `VALUES`, its `UPDATE SET`, or its `INSERT` column list at all. `Users.DepartmentId` is
+  nullable, so the seed is valid — but it means even the rows that *do* exist leave `FK_Users_Departments`
+  entirely unexercised. The relationship is present in schema and absent from data.
+
+### Why this is not "the 3.0.0 entities were not finished"
+
+**The asymmetry does not follow the 3.0.0 boundary, and diagnosing it that way would be wrong.** `Resources`
+predates `Department` and `CompanyResource`; it has been unseeded for as long as it has existed. What 3.0.0 did
+was *extend* a pre-existing gap from one table to three, not create one. Anyone who notices this later and
+reaches for "the 3.0.0 additions were left incomplete" will produce a tidy explanation that happens to be false,
+and will scope the fix to two tables when it is three.
+
+### The schema itself is complete — and that narrows entry 5
+
+Recorded explicitly because a reader of [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts)
+needs it and entry 5 does not say it: **`dbo/Tables/` carries all seven tables and is level with the 3.0.0
+contracts.** `Departments.sql` has `CreatedDate` / `UpdatedDate` / `DeletedDate`, which is the soft-delete shape
+`IDepartmentDao` requires; `CompanyResources.sql` is a keyless-by-design composite-primary-key join table with
+both foreign keys, which is the shape `ICompanyResourceDao` requires.
+
+**Advancing the EFTools submodule pointer therefore carries no schema prerequisite.** The work in entry 5 is
+the Entity Framework implementation and the contract rules, not the database project. Entry 5 is not edited to
+say so — it is cross-referenced from here.
+
+### Why deferred rather than proposed
+
+Judged against [The Bar](#the-bar-everything-here-is-judged-against): closing this does **not** cost the reader
+anything in the domain — no entity, no contract, no Data Access Object interface, no permanent addition to what
+a reader has to hold. That is the unusual part of this entry, and it is why the answer is not *rejected*.
+
+But the payoff today is close to zero:
+
+- The suite runs against `ProphetsWay.Example.DataAccess.NoDB` and is green regardless. The database project is
+  compile-validated in continuous integration and **never populated or queried by any test in this repository.**
+  Seed data here is a convenience for manual exploration, not a fixture anything depends on.
+- The consumer that would actually benefit is a SQL-backed implementation — `ProphetsWay.Example.DataAccess.EF`
+  in `ProphetsWay.EFTools`, which is [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts).
+  Written before that work starts, the seed rows are guesses at what it will want; written alongside it, they
+  are shaped by an implementation that is reading them.
+
+So this is deferred on **timing**, not on merit. It is the rare entry where the right answer is "yes, but not
+yet" rather than "no."
+
+### The strongest argument against deferring, recorded because it is a good one
+
+**A teaching repository arguably should ship data for precisely the two entities that exist to demonstrate the
+paradigm's edges.** `Department` and `CompanyResource` were added in 3.0.0 to mark the boundaries — soft delete
+with a lifecycle, and a keyless join — and they are the two a curious reader is most likely to go looking at.
+Someone who deploys the database expecting to explore the soft-delete showcase opens `Departments`, finds it
+empty, and gets **no explanation at all** for why the one table built to show something interesting is the one
+with nothing in it. Empty-with-no-note reads as unfinished, and in a repository whose product is clarity that
+impression is itself a defect.
+
+That argument is why the deferral has a trigger rather than an expiry date. It is not dismissed.
+
+### Options weighed
+
+| Option | Verdict |
+| --- | --- |
+| Three seed scripts plus the two purge lines `PurgeSeedData.sql` already specifies | The eventual answer. Do it with entry 5, not before |
+| Seed `Departments` and `CompanyResources` only | **No.** It would bake in the wrong diagnosis — `Resources` is part of the same gap and `CompanyResources` cannot be seeded without it, since `FK_CompanyResources_Resources` has to point somewhere |
+| Leave it, but note the emptiness where a reader meets it | The cheap mitigation if the deferral runs long. A comment in `PostDeploymentStart.sql` costs nothing and turns "unfinished" into "deliberate" |
+
+### Revisit trigger
+
+When [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) is picked up. At that point
+there is an implementation that reads these tables, the seed rows can be shaped by what it needs, and the two
+can be verified together. Reopen this then, and seed all three tables in one pass — the purge order is already
+written down.
+
