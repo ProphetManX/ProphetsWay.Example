@@ -1,3 +1,68 @@
+# v3.1.0
+### The test suite did not change, and that is the point
+Not one ```.cs``` file was touched in this release.  The 160 tests are byte-identical to the ones 3.0.0 
+shipped, so when they pass against the retargeted projects they are evidence *about* the retarget rather than 
+a result the retarget could have shaped.  A suite edited in the same change as the build it validates proves 
+only that someone made it green.
+
+The whole release is target frameworks, one dependency bump, one dead property removed, one connection string 
+generalized, and documentation.  Behavior is unchanged.
+
+### Target frameworks
+```ProphetsWay.Example.DataAccess``` and ```ProphetsWay.Example.DataAccess.NoDB``` moved from 
+```netstandard2.0;net48;net8.0;net9.0``` to ```netstandard2.0;net10.0```, and ```ProphetsWay.Example.Tests``` 
+from ```net48;net8.0;net9.0``` to ```net48;net10.0```.  The test project also gained explicit 
+```RootNamespace```, ```AssemblyName``` and ```IsTestProject``` values.
+
+.NET 8 and .NET 9 both reach end of life on 10 November 2026, so neither is worth carrying into a release 
+made now.  Nobody is stranded by dropping them: ```netstandard2.0``` remains, and every runtime that resolved 
+a ```net8.0``` or ```net9.0``` asset resolves that one instead.
+
+The explicit ```net48``` **library** target went with them, for a different reason — it was never earned.  
+```netstandard2.0``` already reaches .NET Framework 4.8, so a second assembly compiled for it added build time 
+and bought nothing.
+
+The ```net48``` **test** leg was deliberately kept, and it is stronger now than it was.  With no ```net48``` 
+library asset to bind to, it binds the Data Access Layer's ```netstandard2.0``` output — the exact assembly a 
+.NET Framework consumer actually receives.  That leg is also the only place 
+```Activator.CreateInstance<T>()``` exception-passthrough behavior is verified, since .NET Framework wraps a 
+throwing constructor there and .NET Core does not.  The library/test target lists differing is deliberate, 
+not drift.
+
+### Now requires ProphetsWay.BaseDataAccess 3.1.0
+Up from 3.0.0.  That release retargets the package to ```netstandard2.0;net10.0``` on the same reasoning; the 
+contracts are unchanged.
+
+### Removed a property that never did anything
+```ProphetsWay.Example.DataAccess.csproj``` carried 
+```<NullableContextOptions>enable</NullableContextOptions>```.  That was the .NET Core 3.0 *preview* spelling 
+of the property that shipped as ```<Nullable>```, and MSBuild ignores it entirely — nullable reference types 
+were never actually on, whatever the file appeared to claim.  It is deleted rather than corrected, because 
+```netstandard2.0``` pins the shared compilation to C# 7.3 and nullable reference types cannot be enabled 
+there anyway.  Removing it makes the file honest about what the compiler is doing.
+
+### The publish profile no longer names a machine
+```ProphetsWay.Example.localhost.publish.xml``` had ```Data Source=Terebellum``` in it, which worked on 
+exactly one computer.  It is now ```Data Source=localhost```, with Integrated Security and no credentials.  
+The file stays tracked on purpose — a repository whose job is to be read benefits from shipping a publish 
+profile that works.
+
+### Documentation
+Two new documents live under ```docs/```.  ```purpose-and-scope.md``` states what this repository is for and 
+the bar a change has to clear to belong in it.  ```feature-requests.md``` is a durable index, entries 1–9, of 
+what was considered and what was decided.
+
+Entries 1–4 are four contract behaviors this repository does not demonstrate.  They were previously restated 
+as prose in ```AGENTS.md```, where they read as an open list with no owner; each now carries a status and the 
+reasoning behind it — two Rejected, one Deferred, one Proposed.  Ending that duplication is the reason they 
+moved.  ```docs/repo-profile.md``` and the per-repository section of ```AGENTS.md``` were refreshed to match.
+
+### Verification
+160 tests on each of the two legs, ```net48``` and ```net10.0``` — 320 executions, all green, with both legs 
+confirmed to have run independently rather than inferred from a combined total.  Azure DevOps build 
+```3.1.0.496```, both checks passing.
+
+
 # v3.0.0
 ### Pointing the whole test suite at a different Data Access Layer is now one line
 ```TestDataAccessFactory``` is the only place in the test project that names an implementation.  

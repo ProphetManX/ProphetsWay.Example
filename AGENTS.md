@@ -56,22 +56,52 @@ The rule is **family-dependent**. Do not "correct" one family to match the other
 
 ## Target Frameworks
 
-Standard set for new and modernized libraries:
-
 ```xml
-<TargetFrameworks>netstandard2.0;net48;net8.0;net9.0</TargetFrameworks>
+<!-- default for a published library -->
+<TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+
+<!-- only when a framework-conditional dependency or API requires it -->
+<TargetFrameworks>netstandard2.0;net48;net10.0</TargetFrameworks>
+
+<!-- test projects — netstandard2.0 is not a valid test target -->
+<TargetFrameworks>net48;net10.0</TargetFrameworks>
 ```
 
-- `netstandard2.0` — maximum reach for older consumers
-- `net48` — final .NET Framework release, for legacy consumers
-- `net8.0` / `net9.0` — current LTS and current
+.NET ships every November: **even-numbered = LTS (3 years), odd-numbered = STS (18 months)**.
+.NET 10 is the current LTS (Nov 2025 → ~Nov 2028). **.NET 8 and .NET 9 both go end of life on
+10 November 2026** — `net8.0`/`net9.0` are now debt, as are `netcoreapp*`, `net5.0`–`net7.0`,
+and anything below `net48`.
 
-Do not add a TFM without a consumer who needs it. Every extra target multiplies build time and
-holds the whole library back to the oldest target's language features. TFMs below `net48`,
-plus `netcoreapp*`, `net5.0`, `net6.0`, and `net7.0`, are end-of-life — treat them as debt.
-
-Write monikers in canonical dotted form (`net8.0`, not `net80`). The undotted form parses, but
-it is non-standard and inconsistent across the repos.
+1. **LTS only.** Never target an STS release in a published library — an 18-month window means
+   re-cutting the list every year and stranding someone each time. Never target a preview.
+2. **`netstandard2.0` is permanent.** It is an API contract, not a runtime, so it cannot expire.
+   It is the reach floor: consumable by .NET Framework 4.6.1+ (painless from 4.7.2 up) and by every
+   .NET Core/5+ runtime. It is also the last .NET Standard version Framework supports —
+   `netstandard2.1` deliberately excluded it.
+3. **`net48` is conditional, not default.** `netstandard2.0` already reaches .NET Framework 4.8, so
+   an explicit `net48` target earns its place only when the repo has a framework-conditional
+   *dependency* or needs an API `netstandard2.0` does not expose. `ProphetsWay.EFTools` qualifies —
+   its EF6 branch is keyed on `net4*`. Most repos do not. Justify it per repo.
+   (.NET Framework 4.8 is the final Framework version; it ships as a Windows component and inherits
+   the OS lifecycle, so it has no standalone EOL date.)
+4. **Carry exactly one modern TFM** unless something concrete requires two. Every extra target
+   multiplies build time.
+5. **Test projects name runtimes directly**, since `netstandard2.0` cannot be a test target. A
+   `net48` test target is how .NET Framework behavior is *verified*, which is distinct from a
+   library merely *supporting* it: `Activator.CreateInstance<T>()` wraps a throwing constructor on
+   .NET Framework and does not on .NET Core, so `ProphetsWay.Example.Tests` must keep `net48` or its
+   exception-passthrough regression guard stops guarding anything.
+6. **Canonical dotted monikers** — `net10.0`, never `net100`. The undotted form parses, but it is
+   non-standard and inconsistent across the repos.
+7. **`LangVersion`:** `netstandard2.0` defaults to C# 7.3, and that constraint applies to all shared
+   code in a multi-targeted project. This is why nullable reference types do not work in these
+   libraries regardless of what a csproj claims.
+8. **Dropping `net8.0`/`net9.0` is not a breaking change** while `netstandard2.0` remains — those
+   consumers still install and still resolve an asset.
+9. **Adding a TFM is a MINOR bump, never a patch.** A new target silently repoints existing
+   consumers to a *different assembly* — a .NET 10 consumer that resolved the `netstandard2.0` asset
+   starts binding the `net10.0` one, a different compilation with different BCL bindings and no
+   netstandard shims. A patch must be safe to take without reading the notes.
 
 ## Packaging Metadata
 
@@ -84,7 +114,7 @@ are optional — but they become mandatory the moment publishing is on the table
 <Authors>G. Gordon Nasseri</Authors>
 <Company>Prophet's Way</Company>
 <Description>...</Description>
-<RepositoryType>GitHub</RepositoryType>
+<RepositoryType>git</RepositoryType>
 <RepositoryUrl>https://github.com/ProphetManX/ProphetsWay.Thing</RepositoryUrl>
 <PackageLicenseExpression>MIT</PackageLicenseExpression>
 <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
@@ -149,10 +179,14 @@ ProphetsWay.Thing/
 ├─ ProphetsWay.Thing/        ← library
 ├─ ProphetsWay.Thing.Tests/  ← xUnit
 └─ docs/                     ← agent-generated analysis
+  ├─ repo-profile.md
+  ├─ purpose-and-scope.md
+  ├─ nuget-extraction-proposal.md
+  └─ feature-requests.md    ← durable request and decision index
 ```
 
-`docs/` holds `repo-profile.md`, `purpose-and-scope.md`, and `nuget-extraction-proposal.md`.
-These are generated by agents and committed.
+These artifacts are generated by agents and committed. `feature-requests.md` becomes applicable once
+the first request is captured; an empty repo need not carry a placeholder.
 
 ## Solution Layout
 
@@ -215,6 +249,7 @@ the project header and sidecars are what change.
   | `Implementer` | Implementation `.cs` only — **never** a test file |
   | `Refactorer` | Implementation `.cs` only, behavior-preserving — **never** a test file |
   | `Modernizer` | `.csproj` / `.sqlproj` build and packaging config — never versions, never namespaces |
+  | `Pipeline Engineer` | `.yml` / `.yaml` only — never versions, secrets, project files, or Markdown |
   | `Changelog Author` | `CHANGELOG.md` only |
   | `Threat Modeler`, `Security Reviewer` | `docs/security/` only — read-only on source |
 
@@ -223,6 +258,10 @@ the project header and sidecars are what change.
 - **Never bump a version** in `app-variables.yml`. That is a human decision.
 - **Never invent an Azure DevOps `definitionId`.** Badge URLs must be copied from a file that
   already exists in the repo. If one is missing, ask.
+- **Feature requests are shared-capture, single-owner triage.** The owner or any agent may append a
+  `Proposed` entry to `docs/feature-requests.md`, but must read the index first and extend an existing
+  entry instead of duplicating it. Only `Purpose Refiner` may change status. Never delete or renumber
+  entries; rejected requests remain with their reasoning, and new numbers increase monotonically.
 - **A namespace change is a binary-breaking change.** Never make one casually; it requires a major
   version bump and a CHANGELOG entry.
 - Respect the family split above. `ProphetsWay.EFTools` living outside `ProphetsWay.Utilities`
@@ -251,6 +290,20 @@ As of **3.0.0** it is also an **executable specification**: `IExampleDataAccess`
 DAL-wide contract rules in its `<remarks>`, and the test suite is partitioned by a `Scope` trait so
 a newly written DAL can run the subset it is actually bound by.
 
+**3.1.0 is a retarget plus documentation release.** No `.cs` file changed in it; the suite is
+byte-identical to 3.0.0's, which is precisely what makes its passing the evidence for the retarget.
+
+### Documents
+
+| File | Owner | Contains |
+|---|---|---|
+| [docs/repo-profile.md](docs/repo-profile.md) | `Repo Analyst` | The evidence base — inventory, API surface, TFMs, packaging audit, README accuracy |
+| [docs/purpose-and-scope.md](docs/purpose-and-scope.md) | `Purpose Refiner` | What this repo is for, and the scope bar everything is judged against |
+| [docs/feature-requests.md](docs/feature-requests.md) | `Purpose Refiner` triages; anyone may append | Entries 1–8 — the durable record of what was considered and deliberately not built |
+
+Numbering in `feature-requests.md` is **per-repository, starting at 1**, and does not correspond to
+the index of the same name in `ProphetsWay.BaseDataAccess`.
+
 ### The Point It Proves
 
 `ProphetsWay.Example.DataAccess` defines the domain and DAO interfaces. `ProphetsWay.Example.Tests`
@@ -258,6 +311,10 @@ runs against them. `ProphetsWay.Example.DataAccess.NoDB` is an in-memory impleme
 EFTools repo, `ProphetsWay.Example.DataAccess.EF` is a second implementation of the same contracts.
 **The same tests pass against both** — that is the entire argument for the paradigm, and it is the
 thing any documentation of this repo must lead with.
+
+The claim is **currently pending, not false forever**: EFTools' submodule pointer is still pre-3.0.0,
+so its EF implementation has not yet met the 3.x contracts. See deviation 1 below before repeating
+the claim unqualified in prose meant for a reader.
 
 `ProphetsWay.Example.Tests/TestDataAccessFactory.cs` is the **only** file in the suite that names a
 concrete implementation. Changing the single `return` in `Create` repoints all 160 tests. Do not
@@ -273,9 +330,19 @@ demonstrate.
 | `ProphetsWay.Example.Database/` | SQL database project — SDK-style `Microsoft.Build.Sql/2.2.0` |
 | `ProphetsWay.Example.Tests/` | xUnit + Shouldly, 160 tests written against the interfaces, not an implementation |
 
-TFMs are `netstandard2.0;net48;net8.0;net9.0` for both DAL projects and `net48;net8.0;net9.0` for
-the tests — the house standard, in canonical dotted form. **This repo is the TFM reference; copy it
-rather than the older repos.**
+TFMs as of **3.1.0** are `netstandard2.0;net10.0` for both DAL projects and `net48;net10.0` for the
+tests — the current house standard, in canonical dotted form. `ProphetsWay.BaseDataAccess` reached the
+same standard in its own 3.1.0, so this repo is **a** reference for the TFM convention rather than the
+sole one. Copy either; do not copy the older repos.
+
+**The library/test split is deliberate.** The DAL projects ship no `net48` asset, so the `net48` test
+leg binds their `netstandard2.0` output — the exact assembly a .NET Framework consumer receives. That
+leg exists to verify .NET Framework *behavior*: `Activator.CreateInstance<T>()` wraps a throwing
+constructor there and does not on .NET Core, which is what the `ConventionShowcase`
+exception-passthrough guard pins. Do not report the split as drift.
+
+The suite runs 160 tests on each leg — **320 executions**. `ProphetsWay.BaseDataAccess` is consumed as
+a NuGet `PackageReference` at **3.1.0**, never as a project reference.
 
 ### Domain Model
 
@@ -326,7 +393,7 @@ source of truth; this is an index, not a restatement.
   not the implementation under test, and they construct themselves rather than using the factory.
   Do not "fix" them.
 
-### 3.0.0 Coverage — What Is and Is Not Demonstrated
+### Coverage — What Is Demonstrated, and Where the Gaps Are Recorded
 
 Demonstrated: `IDisposable` on the DAL, idempotent non-throwing `Dispose`, `ObjectDisposedException`
 from every other member, disposal rolling back an open transaction, all three transaction members,
@@ -334,25 +401,33 @@ no nesting, per-instance transaction scope, unwrapped exception propagation (wit
 `ShouldNotBeOfType<TargetInvocationException>()` regression guard), and `Get<T>(null)` throwing
 `ArgumentException` on a non-nullable value-type identifier.
 
-**Not demonstrated** — do not report these as discoveries:
+**Four contract behaviors are deliberately *not* demonstrated here.** They were formerly restated in
+this file; they are now entries **1–4 in [docs/feature-requests.md](docs/feature-requests.md)**, where
+each carries a triage status and the reasoning behind it — two **Rejected**, one **Deferred**, one
+**Proposed**.
 
-| Gap | Why |
-|---|---|
-| `Get<T>(null)` being *accepted* where the identifier is a reference type or nullable value type | Every entity here keys on `int`, `long`, or `Guid`. Only the throwing half of the split is shown. **The most useful gap to close.** |
-| Value-type (`struct`) entities and their inability to express "not found" as `null` | No struct entity exists |
-| Bare `IBaseSoftEntity` — soft delete without an identifier | `Department` is `IBaseSoftIdEntity<int>`; the soft × keyless corner is empty |
-| Ambient `TransactionScope` being left untouched | No `System.Transactions` reference; hard to show meaningfully in-memory |
+**Read that index before reporting any coverage gap as a discovery. All four are known and decided.**
+Do not copy their reasoning back into this file; ending that duplication is why they moved.
 
 ### Known Deviations
 
 | # | Deviation | Notes |
 |---|---|---|
-| 1 | **`ProphetsWay.EFTools` consumes this repo as a git submodule** | **It is a submodule, not a vendored copy — earlier versions of this file said otherwise and were wrong.** `ProphetsWay.EFTools/.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The two therefore **cannot drift**; the submodule is simply *pinned*, currently to `origin/main` at the 3.0.0 branch point. The real consequence is a **coordination requirement, not a duplication problem**: EFTools has picked up none of the 3.0.0 work, so until its pointer is advanced and `ProphetsWay.Example.DataAccess.EF` is updated, the EF implementation does not satisfy the current `IExampleDataAccess`. Never edit files under `ProphetsWay.EFTools/ProphetsWay.Example/` — edit here and advance the pointer. |
+| 1 | **`ProphetsWay.EFTools` consumes this repo as a git submodule** | **It is a submodule, not a vendored copy — earlier versions of this file said otherwise and were wrong.** `ProphetsWay.EFTools/.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The two therefore **cannot drift**; the submodule is simply *pinned*, currently at `967fd26`, **pre-3.0.0**. The real consequence is a **coordination requirement, not a duplication problem**: `ProphetsWay.Example.DataAccess.EF` implements a contract that no longer exists, and 3.1.0 puts it further behind still. Never edit files under `ProphetsWay.EFTools/ProphetsWay.Example/` — edit here and advance the pointer. Tracked as [FR 5](docs/feature-requests.md). |
 | 2 | Has `app-variables.yml` / `local-pipeline.yml` despite not being published | **Correct and verified.** `PostTargetToNuGet` and `TargetProject` are both commented out; the pipeline builds and tests only. |
-| 3 | Not packaged; packaging metadata is empty stubs | Correct and intentional. A teaching artifact is not a package — do not fill these in. |
-| 4 | `<NullableContextOptions>enable</NullableContextOptions>` in `ProphetsWay.Example.DataAccess.csproj` | **Inert.** That was the .NET Core 3.0 *preview* name for what shipped as `<Nullable>`; MSBuild ignores it, so nullable reference types are not actually on. `.NoDB` does not declare it at all. Cosmetic, but misleading in a repo meant to be read. |
-| 5 | Visual Studio cannot open the SDK-style `.sqlproj` | A VS 2022/2026 limitation, not a defect. The migration is what makes `dotnet build` work on the solution at all. VS Code, SSMS 22, and the .NET CLI are fine; a VS user can unload the database project and work on the three C# projects normally. |
-| 6 | `ProphetsWay.Example.localhost.publish.xml` is committed and names an internal host | `Data Source=Terebellum`, Integrated Security — **no credentials**, so not a secret leak, but it is a per-developer file in a shared repo. |
+| 3 | Not packaged; packaging metadata is empty stubs | Correct and intentional. A teaching artifact is not a package — do not fill these in. `docs/nuget-extraction-proposal.md` is `n/a` here, not missing. |
+| 4 | Visual Studio cannot open the SDK-style `.sqlproj` | A VS 2022/2026 limitation, not a defect. The migration is what makes `dotnet build` work on the solution at all. VS Code, SSMS 22, and the .NET CLI are fine; a VS user can unload the database project and work on the three C# projects normally. |
+
+**Closed in 3.1.0, and not to be reinstated:** the inert `<NullableContextOptions>enable</NullableContextOptions>`
+property is **gone** from `ProphetsWay.Example.DataAccess.csproj`, and the TFM lists are now at the
+house standard. Do not re-add either as a deviation.
+
+**Also closed in 3.1.0 — `ProphetsWay.Example.localhost.publish.xml` is not a deviation.** It is
+committed and referenced as a `<None Include>` item in the `.sqlproj`, both deliberately: a teaching
+repo benefits from shipping a working publish profile. Its connection string is now generic —
+`Data Source=localhost`, Integrated Security, no credentials and no machine-specific value. Nothing
+remains to fix. **Removing the file does not break the build — verified**, but there is no reason to.
+Do not re-add this as a deviation after seeing the file exists.
 
 Deviations previously listed here about duplicated projects drifting independently are **resolved
 and were factually wrong**; do not reinstate them.
@@ -362,7 +437,14 @@ and were factually wrong**; do not reinstate them.
 When writing this repo's README, the reader is someone evaluating whether the BaseDataAccess
 paradigm is worth adopting. Lead with the swap-the-DAL demonstration, not with a project listing.
 
-Two things the current README should gain: an onboarding note that Visual Studio cannot load the
-SDK-style database project (and what to do about it), and a correction to the claim that EFTools
-runs the same suite unchanged — true of `main`, not true of 3.0.0 until EFTools advances its
-submodule pointer.
+Three things the current README needs, none of them applied yet — `README Author` owns that file:
+
+- An onboarding note that Visual Studio cannot load the SDK-style database project, and what to do
+  about it ([FR 7](docs/feature-requests.md)).
+- A correction to the claim that EFTools runs the same suite unchanged — it is pending on EFTools
+  advancing its submodule pointer, not wrong forever.
+- Its stale build facts: it still says the projects target `net8.0`/`net9.0` and reference
+  `ProphetsWay.BaseDataAccess` 3.0.0, and that the suite runs on three legs. See the README accuracy
+  table in [docs/repo-profile.md](docs/repo-profile.md).
+
+`CHANGELOG.md` has no v3.1.0 entry yet; that belongs to `Changelog Author`.

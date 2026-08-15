@@ -4,6 +4,10 @@
 Build Status:  
 [![Build Status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/ProphetManX.ProphetsWay.Example?repoName=ProphetManX%2FProphetsWay.Example&branchName=main)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=24&repoName=ProphetManX%2FProphetsWay.Example&branchName=main)
 
+_This document describes **v3.1.0**. If you change behavior, contracts, target frameworks, or test
+counts, update this marker in the same change — it is how anyone can tell whether the README still
+matches the tree._
+
 ---
 
 ## Why this repository exists
@@ -19,10 +23,26 @@ injects, and an optional reflection dispatcher. **This repository is the worked 
 paradigm holds** — a real domain, a real implementation, and a test suite written against the interfaces
 rather than against the implementation.
 
-The same test suite passes against a completely different data access layer.
-[ProphetsWay.EFTools](https://github.com/ProphetManX/ProphetsWay.EFTools) carries an Entity Framework
-implementation of the very same `IExampleDataAccess` contract, and the tests do not change to accommodate
-it. That is the entire argument, and it is why this repository is worth twenty minutes of your time.
+The argument is one paragraph long:
+
+> `ProphetsWay.Example.DataAccess` defines the entities and the DAO interfaces.
+> `ProphetsWay.Example.Tests` is written against those interfaces and nothing else.
+> `ProphetsWay.Example.DataAccess.NoDB` is an in-memory implementation of them. In the
+> [ProphetsWay.EFTools](https://github.com/ProphetManX/ProphetsWay.EFTools) repository,
+> `ProphetsWay.Example.DataAccess.EF` is a *completely different* implementation of the same contracts, over
+> Entity Framework and a real database. **The same test suite passes against both.**
+
+Everything in this repository is answerable to that paragraph, and it is why the repository is worth twenty
+minutes of your time.
+
+**Where the second implementation currently stands.** `ProphetsWay.EFTools` consumes this repository as a
+**git submodule**, and that pointer is pinned at commit `967fd26` — the 3.0.0 branch point. So its
+`ProphetsWay.Example.DataAccess.EF` implements the pre-3.0.0 contract: no `Dispose`, no `Department`, no
+`CompanyResource`, no snapshot rule. **The design property holds — a submodule cannot drift, only lag — but
+the second implementation has not yet been demonstrated against the 3.x contracts.** Advancing that pointer
+is work in the EFTools repository, tracked here as
+[FR 5](docs/feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts). Read the
+claim above as *pending re-demonstration*, not as a claim this repository is quietly walking back.
 
 **Highlights**
 
@@ -167,7 +187,8 @@ alongside `IBaseDataAccess`, and that single interface is what business logic in
 An in-memory implementation, written so that this DAL — and any implementation of it — can be unit tested
 without a database, locally and in a build pipeline alike.
 [ProphetsWay.EFTools](https://github.com/ProphetManX/ProphetsWay.EFTools) implements the same contract on
-Entity Framework and reuses these tests.
+Entity Framework and reuses these tests — currently from a submodule pointer pinned before the 3.x
+contracts landed. See [Where the second implementation currently stands](#why-this-repository-exists).
 
 `DataStore` is a static class holding one `StoreTable` per entity, standing in for the database itself
 rather than for a connection to it. Every write passes through it and hands an undo entry to a
@@ -176,8 +197,10 @@ rather than for a connection to it. Every write passes through it and hands an u
 #### ProphetsWay.Example.Database
 
 A SQL Server database project on the `Microsoft.Build.Sql` SDK, so it builds with `dotnet build` on any
-platform. Deploy it if you want to tinker against a real server. Post-deployment scripts seed the tables so
-the database is not empty; the data is deliberate nonsense.
+platform. Deploy it if you want to tinker against a real server. Post-deployment scripts seed `Companies`,
+`Jobs`, `Users` and `Transactions`; the data is deliberate nonsense. `Resources`, `Departments` and
+`CompanyResources` are created but left empty — a known gap, deferred with its reasoning in
+[FR 9](docs/feature-requests.md#9--seed-data-for-resources-departments-and-companyresources).
 
 The SDK-style format comes with a tooling constraint: **Visual Studio 2022 and Visual Studio 2026 cannot
 open an SDK-style `.sqlproj`.** Both are limited to the legacy SSDT project format, which targets
@@ -187,11 +210,11 @@ VS Code and the .NET CLI all handle it. See
 
 #### ProphetsWay.Example.Tests
 
-The most useful part of the repository. xUnit and Shouldly, 160 tests, run across `net48`, `net8.0` and
-`net9.0`. By default they run against the in-memory implementation, but every test class takes its DAL from
-`TestDataAccessFactory.Create` — point that one method at any class implementing `IExampleDataAccess`,
-backed by anything you like, and the suite tests your implementation instead. Every test carries a `Scope`
-trait, so you can run only the ones your implementation is bound by.
+The most useful part of the repository. xUnit and Shouldly, 160 tests, run on two legs — `net48` and
+`net10.0` — for **320 executions**. By default they run against the in-memory implementation, but every test
+class takes its DAL from `TestDataAccessFactory.Create` — point that one method at any class implementing
+`IExampleDataAccess`, backed by anything you like, and the suite tests your implementation instead. Every
+test carries a `Scope` trait, so you can run only the ones your implementation is bound by.
 
 ---
 
@@ -213,9 +236,26 @@ dotnet add package ProphetsWay.BaseDataAccess
 Install-Package ProphetsWay.BaseDataAccess
 ```
 
-Targets: the two data access layer projects build for `netstandard2.0`, `net48`, `net8.0` and `net9.0`; the
-test project runs on `net48`, `net8.0` and `net9.0`. The solution references the released
-`ProphetsWay.BaseDataAccess` 3.0.0.
+Targets: the two data access layer projects build for `netstandard2.0` and `net10.0`; the test project runs
+on `net48` and `net10.0`. The solution references the released `ProphetsWay.BaseDataAccess` **3.1.0** as a
+NuGet `PackageReference` — never as a project reference, so the contracts you read here are the ones a
+consumer installs.
+
+The libraries ship no `net48` asset, so the `net48` test leg binds their `netstandard2.0` output — the exact
+assembly a .NET Framework consumer receives. That leg exists to verify .NET Framework *behavior*:
+`Activator.CreateInstance<T>()` wraps a throwing constructor there and does not on .NET Core, which is what
+the `ConventionShowcase` exception-passthrough guard pins.
+
+### Before you open the solution in Visual Studio
+
+`ProphetsWay.Example.Database` is an SDK-style `.sqlproj` on the `Microsoft.Build.Sql/2.2.0` SDK, and
+**Visual Studio 2022 and 2026 cannot load it.** You will see a failed project load in the first thirty
+seconds. This is a Visual Studio limitation, not a defect — the SDK-style migration is what makes
+`dotnet build` work on this solution at all.
+
+**Unload the database project and the three C# projects build, run and test normally.** VS Code, SSMS 22 and
+the .NET CLI all handle it without complaint. Details and the full tool matrix are in
+[If you open this in Visual Studio](#if-you-open-this-in-visual-studio).
 
 ---
 
@@ -481,8 +521,8 @@ An implementation that reads `item` inside one of those three methods compiles h
 
 ## The Convention Showcase
 
-`ProphetsWay.Example.Tests/ConventionShowcase/` holds data access layers that are deliberately broken, one
-mistake each, named for the mistake, so you meet each failure mode here rather than in your own code:
+`ProphetsWay.Example.Tests/ConventionShowcase/` holds data access layers built to fail, one failure mode
+each, named for the failure, so you meet each one here rather than in your own code:
 
 | DAL | The mistake |
 |---|---|
@@ -492,12 +532,23 @@ mistake each, named for the mistake, so you meet each failure mode here rather t
 | `BaseTypeParameterDal` | The parameter is a base class or an interface rather than the entity type |
 | `IdentifierShowcaseDal` | A correct DAL, used to show what a badly shaped **entity** does |
 | `ThrowingDal` | Correct, and throws — used to prove the exception arrives unwrapped |
+| `EntityFailureDal` | Correct, and its **entity** throws — from the constructor, and from the identifier setter |
 
-Every one fails with `DataAccessConventionException`, and no test asserts on message text: the wording is
-not part of the contract. These tests are traited `Scope=Dispatcher` rather than `Contract` — they pin the
-reflection convention in `ProphetsWay.BaseDataAccess`, not any DAL, so they hold whatever implementation the
-factory returns and are excluded from a `Scope=Contract` run. Two properties are worth knowing before you
-write your own DAL.
+The first five fail with `DataAccessConventionException` — the four mis-wired DALs by their own fault,
+`IdentifierShowcaseDal` by its entities' — and no test asserts on message text: the wording is not part of
+the contract.
+
+**`ThrowingDal` and `EntityFailureDal` are not convention failures at all.** Both are wired correctly, both
+are dispatched successfully, and what reaches the caller is the `ShowcaseFailureException` their code threw,
+arriving as itself. They are the pair that pins unwrapped exception propagation, and `EntityFailureDal` is
+where the `net48` leg earns its keep: `ThrowingConstructorEntity` throws from its parameterless constructor,
+which `new T()` reaches through `Activator.CreateInstance<T>()` — and that wraps a throwing constructor on
+.NET Framework and does not on .NET Core. The two targets fail differently underneath and are required to
+look identical from the caller's seat.
+
+These tests are traited `Scope=Dispatcher` rather than `Contract` — they pin the reflection convention in
+`ProphetsWay.BaseDataAccess`, not any DAL, so they hold whatever implementation the factory returns and are
+excluded from a `Scope=Contract` run. Two properties are worth knowing before you write your own DAL.
 
 - **The declared return type is checked before the method is invoked**, so a mis-declared `Update` or
   `Delete` cannot write to your database and only then report itself.
@@ -563,7 +614,8 @@ dotnet test
 ```
 
 The whole solution — database project included — builds with the .NET CLI. No database server is required
-to run the tests: they use the in-memory implementation by default.
+to run the tests: they use the in-memory implementation by default. Expect 160 tests on each of `net48` and
+`net10.0` — **320 executed cases**.
 
 Every test carries a `Scope` trait, so you can run a subset:
 
@@ -603,13 +655,23 @@ You have three options:
 
 ### Known gaps
 
-- The database project has tables for `Companies`, `Jobs`, `Users`, `Transactions` and `Resources`. It has
-  **no** `Departments` or `CompanyResources` tables, so the schema is behind the contracts. Anyone building
-  a SQL-backed implementation of `IExampleDataAccess` has to add them.
 - Uncommitted writes are visible to other DAL instances — see
   [Transactions](#transactions).
 - The database project does not open in Visual Studio — see
   [If you open this in Visual Studio](#if-you-open-this-in-visual-studio).
+
+---
+
+## Further reading
+
+The reasoning behind this repository lives in `docs/`. Start there before concluding something is
+missing.
+
+| Document | Go here for |
+|---|---|
+| [docs/feature-requests.md](docs/feature-requests.md) | **The most useful of the three.** The durable record of what was considered and deliberately not built, each entry carrying a triage status and the reasoning behind it. If you think you have found a gap, it is probably here already — decided, with the argument written down. |
+| [docs/purpose-and-scope.md](docs/purpose-and-scope.md) | What this repository is for, and the scope bar every addition is judged against. Read it before proposing a change. |
+| [docs/repo-profile.md](docs/repo-profile.md) | The evidence base — project inventory, API surface, target frameworks, packaging audit, and README accuracy. |
 
 ---
 
