@@ -30,14 +30,16 @@ them, because duplicated rules drift.
 | 2 | [A value-type (`struct`) entity](#2--a-value-type-struct-entity) | Deferred — cheap only if 1 lands first |
 | 3 | [Bare `IBaseSoftEntity` — soft delete without an identifier](#3--bare-ibasesoftentity--soft-delete-without-an-identifier) | **Rejected** — not deferred |
 | 4 | [Demonstrating that ambient `TransactionScope` is left untouched](#4--demonstrating-that-ambient-transactionscope-is-left-untouched) | **Rejected here** — belongs to a database-backed implementation |
-| 5 | [Advance the EFTools submodule pointer onto the 3.x contracts](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) | **Proposed** — highest consequence in the repository |
+| 5 | [Advance the EFTools submodule pointer onto the 3.x contracts](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) | **Proposed** — first step landed 2026-08-16; the claim it tracks is still pending |
 | 6 | [The committed developer-specific publish profile](#6--the-committed-developer-specific-publish-profile) | **Done** — genericized in v3.1.0, file kept |
 | 7 | [A Visual Studio onboarding note in the README](#7--a-visual-studio-onboarding-note-in-the-readme) | **Proposed** — trivial, high leverage |
 | 8 | [Selecting the implementation from configuration instead of a code edit](#8--selecting-the-implementation-from-configuration-instead-of-a-code-edit) | **Rejected** — decided in code comments already |
 | 9 | [Seed data for `Resources`, `Departments` and `CompanyResources`](#9--seed-data-for-resources-departments-and-companyresources) | **Deferred** — revisit with [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) |
 | 10 | [A second Data Access Layer implementation in this repository — SQLite, MSSQL, or relocating the Entity Framework one](#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one) | **Rejected** — all four variants, including replacing `.NoDB` |
-| 11 | [The two mis-scoped `Contract` assertions, and why `.NoDB` stays](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | **Scheduled** — one half landed, one half outstanding |
+| 11 | [The two mis-scoped `Contract` assertions, and why `.NoDB` stays](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | **Done** — both halves applied 2026-08-16; a third mis-scope closed with them |
 | 12 | [A traceability rule for `Contract`-scoped assertions](#12--a-traceability-rule-for-contract-scoped-assertions) | **Proposed** — the cheap control that would have caught mis-scope 2 |
+| 13 | [A seam letting another repository point this suite at its own implementation](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation) | **Scheduled** — direction approved 2026-08-16 (shape B); **the seam's design is deliberately deferred** until Lap 1 of the Entity Framework work shows what it must carry |
+| 14 | [Restoring `DateTimeKind` on a `Department` reached as a navigation property](#14--restoring-datetimekind-on-a-department-reached-as-a-navigation-property) | **Proposed** — 2026-08-16; the gap left open by narrowing `IDepartmentDao` rule 18 to that Data Access Object's own reads |
 
 Numbers are permanent. Entries are never renumbered and never removed —
 [purpose-and-scope.md](purpose-and-scope.md) cites entries by number, and a rejected entry is decision history
@@ -86,8 +88,9 @@ in this folder. No contract, entity, Data Access Object interface, or test chang
 | 8 | Rejected | n/a | Decided against |
 | 9 | Deferred | **No** | Nothing to land, and the deployed database is not exercised by any test in this repository |
 | 10 | Rejected | n/a | Decided against, in all four variants |
-| 11 | Scheduled | **No — it is post-v3.1.0 work** | The `SnapshotDeepCopyTests` half is already applied to the working tree, which means **the tree no longer matches the suite v3.1.0 shipped**. It belongs to the next release, not retroactively to this one |
+| 11 | Done | **No — it is post-v3.1.0 work** | Both halves are applied to the working tree, which means **the tree no longer matches the suite v3.1.0 shipped**. It belongs to the next release, not retroactively to this one |
 | 12 | Proposed | **No** | A review convention, not a change to any file that v3.1.0 touched |
+| 13 | Proposed | **No** | Filed after v3.1.0 shipped, and it changes a test-project file |
 
 **The honest answer is none, apart from entry 6** — which changed one attribute value in a publish profile and
 no test at all. That is the correct outcome for a release whose evidence is "the same 160 tests still pass";
@@ -98,12 +101,34 @@ the trait retrait applied this session means the phrase "no `.cs` file changed" 
 and is **no longer true of the working tree**. The next release's notes must say so; repeating v3.1.0's
 byte-identical claim against the current tree would be false.
 
+**Sharpened 2026-08-16.** Three `.cs` files have changed since v3.1.0 shipped — `SnapshotDeepCopyTests.cs`
+and `UserDaoTests.cs`, retraited and then extended by a test each, and `IExampleDataAccess.cs`, which gained
+the IDENTIFIER and ROW COUNT rules. The suite is **164 tests / 328 executions** against the 160 / 324 that
+v3.1.0 shipped, and the version line is now **3.1.1**. The table above is a judgment about **v3.1.0** and is
+left as it was; do not retrofit these figures into it.
+
+**Two further changes postdate the table, and it is likewise not retrofitted — 2026-08-16.**
+[Entry 13](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation) moved from
+`Proposed` to **`Scheduled`** by owner decision, and
+[entry 14](#14--restoring-datetimekind-on-a-department-reached-as-a-navigation-property) was filed as
+`Proposed`. **Neither is eligible for v3.1.0** — 13 changes a test-project file and its design is deferred;
+14 proposes nothing for this repository's suite at all. The table's row 13 records that entry's status *as
+the table was written* and is left alone.
+
 ---
 
 ## 1 — Demonstrate the accepting half of `Get<T>(null)`
 
-**Status:** **Proposed.** The most useful gap in the repository, and the judgment that it is the most useful
-one is carried forward from `AGENTS.md` and [repo-profile.md](repo-profile.md) rather than re-derived.
+**Status:** **Proposed** — **re-verified 2026-08-16, unchanged.** The most useful gap in the repository, and
+the judgment that it is the most useful one is carried forward from `AGENTS.md` and
+[repo-profile.md](repo-profile.md) rather than re-derived.
+
+**The gap is still open, checked rather than assumed.** A repository-wide search of
+`ProphetsWay.Example.Tests/` for `Get<…>(null)`, `string Id` and `int? Id` returns exactly one hit —
+`DepartmentDataAccessTests` line 164, `_da.Get<Department>(null)`, which is the **throwing** half.
+`ConventionShowcase/` still carries three entity types (`NoIdentifierEntity`, `GetOnlyIdentifierEntity`,
+`PrivateSetterIdentifierEntity`), none of them reference-keyed or nullable-keyed. The suite grew by four
+tests since v3.1.0 and none of them touched this.
 
 ### The gap
 
@@ -159,9 +184,11 @@ anyone's obligations.
 
 ## 2 — A value-type (`struct`) entity
 
-**Status:** Deferred. Real, sharp, and not worth domain space on its own — **but it becomes nearly free if
-[entry 1](#1--demonstrate-the-accepting-half-of-gettnull) lands**, and should be reconsidered at that moment
-rather than on a schedule.
+**Status:** Deferred — **re-verified 2026-08-16, unchanged.** Real, sharp, and not worth domain space on its
+own — **but it becomes nearly free if [entry 1](#1--demonstrate-the-accepting-half-of-gettnull) lands**, and
+should be reconsidered at that moment rather than on a schedule. Entry 1 has not landed, so the gate has not
+opened; a search of the test project for `struct ` returns no entity declaration, and every entity in
+`ProphetsWay.Example.DataAccess/Entities/` is still a `class`.
 
 `Get<T>` supports value-type entities, and such an entity **cannot express "not found" as `null`** — a struct
 `T` has no null, so a miss comes back as a default-valued instance that looks like a real one. That is a
@@ -187,8 +214,11 @@ calculus changes and this should be reopened. It should **not** be closed by add
 
 ## 3 — Bare `IBaseSoftEntity` — soft delete without an identifier
 
-**Status:** **Rejected.** Not deferred — this was decided against on the merits, and reopening it needs a real
-implementation that wants the shape, not a fuller grid.
+**Status:** **Rejected** — **re-verified 2026-08-16, unchanged.** Not deferred — this was decided against on
+the merits, and reopening it needs a real implementation that wants the shape, not a fuller grid. The stated
+reopening trigger is *an actual Data Access Layer that needs soft delete on a keyless entity*; the only
+candidate named, `ProphetsWay.EFTools`, has not reached the 3.x contracts at all, so no such implementation
+exists yet. The rejection stands on the same reasoning, not on inertia.
 
 The observation is correct: `Department` implements `IBaseSoftIdEntity<int>` and `CompanyResource` implements
 the bare `IBaseEntity`, so of the 2×2 of {soft, hard} × {keyed, keyless}, the soft-and-keyless corner is empty.
@@ -215,9 +245,11 @@ diagram, not a requirement.
 
 ## 4 — Demonstrating that ambient `TransactionScope` is left untouched
 
-**Status:** **Rejected here.** Not rejected as a contract — it is a real, specified rule in `IBaseDataAccess`
-— but rejected as something *this* repository can demonstrate meaningfully. The demonstration belongs to a
-database-backed implementation.
+**Status:** **Rejected here** — **re-verified 2026-08-16, unchanged.** Not rejected as a contract — it is a
+real, specified rule in `IBaseDataAccess` — but rejected as something *this* repository can demonstrate
+meaningfully. The demonstration belongs to a database-backed implementation. A search of the test project
+for `TransactionScope` still returns no match, and `.NoDB` is unchanged, so the reasoning below applies to
+the current tree exactly as written.
 
 ### The rule
 
@@ -260,8 +292,26 @@ in-memory store — pointing at this entry. That is a `README Author` decision, 
 
 ## 5 — Advance the EFTools submodule pointer onto the 3.x contracts
 
-**Status:** **Proposed.** The highest-consequence open item about this repository, and the only one that
-affects whether its central claim is currently true.
+**Status:** **Proposed** — re-triaged 2026-08-16, **deliberately unchanged**. The highest-consequence open
+item about this repository, and the only one that affects whether its central claim is currently true.
+
+**Why the status did not move, given that its first step has landed.** The pointer advance is one of six
+steps in [ProphetsWay.EFTools FR 1](../../ProphetsWay.EFTools/docs/feature-requests.md), and the other five
+have not happened:
+
+- **Not `Done`.** The claim this entry exists to track — that the same tests pass against an Entity
+  Framework implementation — is still false. Closing the entry would record the opposite.
+- **Not `Deferred`.** Deferral implies parking something until a trigger. Nothing is parked; work is in
+  flight in the other repository, and marking this `Deferred` would demote the item this file calls its
+  highest-consequence one.
+- **Not `Scheduled`.** There is nothing in *this* repository to schedule. The entry's own closing paragraph
+  already says so.
+
+**And the advance has, for now, made things worse rather than better** — `ProphetsWay.EFTools` **does not
+compile** as of this date, because its test project, its adapters and its Entity Framework Data Access Layer
+were all left behind by the pointer. That is a known waypoint recorded in that repository's FR 1 and its
+`AGENTS.md`, not a regression, but anyone reading this entry expecting the claim to be closer to true should
+know the intermediate state is a red build.
 
 `ProphetsWay.EFTools` consumes this repository as a **git submodule**, not a vendored copy — its
 `.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The
@@ -292,9 +342,27 @@ members against the real context, and satisfy the snapshot and ordering rules �
 particular requires an explicit `ORDER BY` on both `GetAll` and `GetPaged`, which is precisely the divergence
 the rule was written to catch. Then run `dotnet test --filter "Scope=Contract"` there.
 
-**Nothing in this repository changes.** It is recorded here because the claim that fails lives here, and
+~~**Nothing in this repository changes.**~~ It is recorded here because the claim that fails lives here, and
 because anyone reading this repository's README needs to be able to find out that the claim is pending rather
 than wrong.
+
+**Corrected 2026-08-16 — "nothing in this repository changes" is no longer true.** That sentence was written
+when `BaseUnitTests<T>` still exposed `protected abstract T GetIExampleDataAccess { get; }`, which is how
+`ProphetsWay.EFTools` supplied its own implementation. **The single-construction-site refactor removed that
+hook**, and `TestDataAccessFactory.Create()` is a `static` method taking no argument and naming `.NoDB`
+directly \u2014 so the Entity Framework repository, which may not edit files under its pinned submodule, now has
+no way to run this suite against its implementation. Closing this entry therefore requires a change **here**
+as well as there. The reasoning is not restated: it is
+[entry 13](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation).
+
+**Update 2026-08-16 — the fork that blocked entry 13 is resolved in direction, and this entry's status is
+still deliberately `Proposed`.** The owner chose the **upstream seam** over a duplicate suite in
+`ProphetsWay.EFTools`, so the route by which this entry can eventually be closed is now settled; entry 13
+moved to `Scheduled` on the strength of it. **This entry did not move**, for the reason its own paragraphs
+above give: the claim it tracks is still false, and a decision about *how* the claim will be demonstrated is
+not the claim becoming true. The seam's **design** is separately deferred until Lap 1 of the Entity Framework
+work — so the sequence closing this entry is Lap 1, then the seam, then a green
+`dotnet test --filter "Scope=Contract"` against the Entity Framework implementation.
 
 **Related, discovered while verifying the submodule and belonging to that repository:** `.gitmodules` in
 `ProphetsWay.EFTools` carries a stray second block, `[submodule "Submod"]`, with only `branch = main` and no
@@ -637,9 +705,35 @@ Rejecting a second implementation *here* is not a comment on certifying one impl
 
 ## 11 — The two mis-scoped `Contract` assertions, and why `.NoDB` stays
 
-**Status:** **Scheduled.** Half applied to the working tree, half outstanding. This is a decided matter, not an
-open bug — it is recorded so that a future reader finding either assertion does not diagnose it fresh, and does
-not re-propose replacing `.NoDB` on the strength of it.
+**Status:** **Done — 2026-08-16.** Both halves are applied to the working tree. Previously `Scheduled`
+with one half outstanding. This is a decided matter, not an open bug — it is recorded so that a future
+reader finding either assertion does not diagnose it fresh, and does not re-propose replacing `.NoDB` on
+the strength of it.
+
+**What closed it, verified rather than inherited.** [UserDaoTests.cs](../ProphetsWay.Example.Tests/UserDaoTests.cs)
+was opened on this date. The class-level `[Trait("Scope", "Contract")]` is **gone**, replaced by
+**seven method-level traits — five `Contract` and two `Characterization`** — each carrying `<remarks>` that
+name the sentence in `IUserDao` making it characterization, including an explicit instruction not to
+promote it back.
+
+**Three things landed rather than the one this entry authorized, and the difference is worth naming:**
+
+1. `ShouldGetCustomFunctionality` was retraited to `Characterization` — **this is mis-scope 2, as
+   authorized.**
+2. `ShouldCallCustomUserFunctionality` was **also** retraited to `Characterization`, and its `<remarks>`
+   say so in as many words: *"It was `Contract` until this pass."* **This is a third mis-scope, which this
+   entry did not name.** It fails the same test as mis-scope 2 and for the same reason — it asserted a
+   no-throw promise that `IUserDao` explicitly declines to make. Recorded here rather than as a new entry
+   because it is the same defect in the same method group, found in the same pass; it is evidence for
+   [entry 12](#12--a-traceability-rule-for-contract-scoped-assertions), not a separate finding.
+3. `ShouldNotAdoptTheInstanceHandedToCustomUserFunctionality` was **added** as a new `Contract` test. This
+   entry anticipated it as an option — *"keep a `Contract` test asserting only 'something was written'"* —
+   and that is the shape `Test Designer` chose.
+
+**Why `Done` and not left `Scheduled`:** every change this entry authorized is in the tree, and what
+remains of it — the `.NoDB` decision below — is recorded reasoning rather than pending work. **Flagged for
+owner confirmation** only because item 2 above went beyond the authorization; if the owner would rather the
+third mis-scope carry its own number, say so and it will be filed as a new entry rather than folded here.
 
 ### What was wrong
 
@@ -670,21 +764,44 @@ CustomFunctionalityStamp` in `ProphetsWay.Example.DataAccess.NoDB.Daos.UserDao`,
 what if anything it writes back onto the caller's instance, is the implementation's to define."* A
 `Contract`-scoped test therefore demands of every implementer a value the contract deliberately refuses to name.
 
-**Outstanding.** `UserDaoTests` carries a single class-level `[Trait("Scope", "Contract")]` covering five
+~~**Outstanding.** `UserDaoTests` carries a single class-level `[Trait("Scope", "Contract")]` covering five
 `[Fact]`s, so the same restructure is needed: replace it with five method-level traits, four `Contract` and one
-`Characterization`, and add `<remarks>` pointing at the sentence in `IUserDao` that makes it characterization.
+`Characterization`, and add `<remarks>` pointing at the sentence in `IUserDao` that makes it characterization.~~
+**Applied — 2026-08-16.** The description above is retained struck through because it is what was
+authorized, and what landed is close but not identical: the class-level trait is gone and the methods carry
+their own, but there are **seven** of them rather than five — five `Contract`, two `Characterization` —
+because a third mis-scope was found and a new `Contract` test was added in the same pass. See the status
+block at the top of this entry.
+
 The other two assertions in the method — that `Id` round-trips and that `Whatever` *changed* — are genuinely
 contractual, so an alternative shape is to keep a `Contract` test asserting only "something was written" and
 move only the literal into a `Characterization` sibling. That choice belongs to `Test Designer`; **this entry
-records that the retrait is authorized, not the wording of it.**
+records that the retrait is authorized, not the wording of it.** **`Test Designer` took that alternative** —
+`ShouldNotAdoptTheInstanceHandedToCustomUserFunctionality` is the resulting `Contract` test.
 
-### The counts move, and the documents that state them will go stale
+### The counts moved — and the predictions below were all wrong
 
-The partition was `Contract` 138 / `Characterization` 2 / `Dispatcher` 20. With mis-scope 1 applied it is
-**137 / 3 / 20**, verified against the tree. With mis-scope 2 applied it becomes **136 / 4 / 20**. The total
-stays 160. [`README.md`](../README.md) line 137, `AGENTS.md` line 399 and [repo-profile.md](repo-profile.md)
-lines 41 and 330 all quote the old triple; each is its own owner's to correct, and none should be corrected
-twice.
+The partition was `Contract` 138 / `Characterization` 2 / `Dispatcher` 20, total 160. This entry then
+predicted **137 / 3 / 20** with mis-scope 1 applied and **136 / 4 / 20** with mis-scope 2 applied, on a total
+that "stays 160."
+
+**All three of those figures are superseded. The tree as of 2026-08-16 is `Contract` 139 /
+`Characterization` 5 / `Dispatcher` 20, total 164 — 328 executions over the two legs.** Verified by a static
+count of every `[Trait("Scope", …)]` in `ProphetsWay.Example.Tests/`: five method-level `Characterization`
+traits (`CompanyDaoTests`, `DataAccessTransactionTests`, `SnapshotDeepCopyTests`, and **two** in
+`UserDaoTests`), and two class-level `Dispatcher` traits covering the 11 and 9 facts in
+`ConventionShowcaseTests` and `ExceptionPassthroughShowcaseTests`.
+
+**The prediction failed because the total was assumed fixed.** Retraiting moves a test between buckets and
+cannot change the sum, so "the total stays 160" was sound arithmetic about retraits and wrong about the
+world — four tests were **added** in the same period, two of them closing a gate hole where a cascading
+`Update` had been passing all 138 `Contract` tests. A count in this file is a fact about a tree, and it goes
+stale the moment anyone writes a test. **Do not quote 137 / 3 / 20, 136 / 4 / 20, 160, or 324 executions
+from anywhere.**
+
+[`README.md`](../README.md), `AGENTS.md` and [repo-profile.md](repo-profile.md) each quote a triple; each is
+its own owner's to correct, none should be corrected twice, and the figure they should all reach is
+**164 / 139 / 5 / 20**.
 
 **`CHANGELOG.md` line 80 quotes it too and must be left alone.** It sits under the `v3.0.0` heading, where 138
 was the true count. Correcting a shipped release's notes to match a later tree is not a fix.
@@ -759,5 +876,268 @@ so it does not catch the class of defect that prompted the question. `Convention
 deliberately mis-wired Data Access Layers, and their subject is the reflection convention in
 `ProphetsWay.BaseDataAccess` — not the domain contracts. Extending them to police contract scope would give
 that folder a second, unrelated job.
+
+---
+
+## 13 — A seam letting another repository point this suite at its own implementation
+
+**Status:** **Scheduled** — moved from `Proposed` on **2026-08-16** by owner decision. Filed 2026-08-16 while
+re-triaging [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) after the
+`ProphetsWay.EFTools` submodule pointer advanced. **This is the entry the pointer advance created**, and
+nothing in this index covered it.
+
+**Read the next section before reading anything else here.** The status moved because the *direction* is
+now committed; **the seam's design is not**, and that is deliberate rather than unfinished.
+
+### Owner decision — 2026-08-16: the direction is approved, the design is deferred
+
+The owner resolved the A-or-B fork posed by
+[ProphetsWay.EFTools FR 6](../../ProphetsWay.EFTools/docs/feature-requests.md#6--rebuild-prophetswayeftoolstests-on-the-3x-factory-and-scope-traits)
+in favour of **shape B — the upstream seam, which is this entry.**
+
+- **Shape A is declined.** A duplicate local suite inside `ProphetsWay.EFTools` **ends the demonstration this
+  repository exists to provide**: two copies of the assertions that must be kept in step, and the moment they
+  diverge *"the tests do not change to accommodate it"* stops being checkable. That option is closed, not
+  parked. It is the fourth row of [Shapes worth weighing](#shapes-worth-weighing--the-decision-is-the-direction-not-the-mechanism)
+  below, and it is now struck.
+- **What is committed is the direction and nothing more.** Nobody has yet attempted to satisfy the 3.1.0
+  contracts in Entity Framework, so **the seam's requirements are unknown** — what it must carry, whether the
+  Entity Framework suite needs per-class construction, a shared fixture, provider selection, or none of those.
+  The seam is to be designed **once Lap 1 of the Entity Framework work has shown what it must carry.**
+- **Therefore: the absence of a seam design in this repository is not outstanding work.** A later reader must
+  not mistake a committed *direction* for an approved *design*, and must not open a defect because no seam
+  exists yet. The trigger for designing it is Lap 1, not this decision.
+
+**This does not reopen [entry 8](#8--selecting-the-implementation-from-configuration-instead-of-a-code-edit),
+and nothing here should be read as softening its rejection.** Entry 8 declined *configuration-driven*
+selection — an environment variable or a `.runsettings` parameter. Shape B asks only that the construction
+line be **reachable from a repository that cannot edit it**. The obvious, unconditional default line stays
+exactly where it is. That distinction is the whole of why this entry exists separately from entry 8, and it
+must survive any future summary of either.
+
+### The problem
+
+`ProphetsWay.EFTools` consumes this repository as a **pinned git submodule** and is under a standing
+instruction never to edit files under `ProphetsWay.Example/` from that side — edits happen here and the
+pointer moves. That arrangement is correct and is what
+[entry 10](#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one)
+protects.
+
+It also means the Entity Framework repository **cannot run this suite against its own implementation.**
+Verified by opening [`TestDataAccessFactory.cs`](../ProphetsWay.Example.Tests/TestDataAccessFactory.cs):
+
+```csharp
+public static IExampleDataAccess Create()
+{
+    //>>> The one line to change to point this suite at another implementation. <<<
+    return new ExampleDataAccess();
+}
+```
+
+`CreateAs<T>()` calls `Create()` and casts. The method is `static`, takes no argument, consults nothing, and
+names the in-memory implementation directly. `BaseUnitTests<T>` sources every subject from it.
+
+**Before 3.0.0 there was a seam and it has been removed.** `BaseUnitTests<T>` used to declare
+`protected abstract T GetIExampleDataAccess { get; }`, and `ProphetsWay.EFTools.Tests` supplied the Entity
+Framework Data Access Layer by inheriting the test classes and overriding it — six adapter files doing
+nothing else. **That is precisely how the swap demonstration was made real from the other side, and the
+single-construction-site refactor removed it** without anything replacing it.
+
+So the instruction in those `<remarks>` — *"to run this suite against a different implementation … change
+the single `return` … and nothing else"* — is true for a reader of this repository and **unreachable for the
+one repository that actually wants to do it.**
+
+### Why this matters more than it looks
+
+This repository's product is a single claim: *the same tests pass against radically different storage.* The
+tests being **unmodified** is the whole argument. Right now that argument is demonstrable only by a reader
+editing one line locally and running it — a thought experiment with a compile step, not a second
+implementation actually passing.
+
+**Nothing is currently broken by this** — the Entity Framework side is mid-flight and non-compiling for
+three other reasons. But it means [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts)
+cannot be closed by work in that repository alone, which is not what entry 5 says. Entry 5's *"nothing in
+this repository changes"* was written when the inheritance hook existed. **It is now false**, and this entry
+is the correction rather than a rewrite of entry 5's reasoning.
+
+### This is not [entry 8](#8--selecting-the-implementation-from-configuration-instead-of-a-code-edit)
+
+**Read that entry before reacting to this one, and do not treat its rejection as covering this.** Entry 8
+declines reading the choice from an environment variable or `.runsettings`, because one obvious line beats a
+lookup whose other half a reader must go and find. **That reasoning is accepted here without qualification
+and this entry does not attack it.**
+
+The difference is *who* is asking:
+
+| | Entry 8 | This entry |
+|---|---|---|
+| Asks for | The choice to be made **without a code edit** | The choice to be **reachable from a repository that cannot make the edit** |
+| Motivated by | Continuous-integration convenience | The central claim being demonstrable at all |
+| Costs the reader | The obvious line stops being obvious | Nothing, if the obvious line remains the default |
+
+A seam that leaves `Create()` returning `new ExampleDataAccess()` as its visible, unconditional default
+satisfies entry 8's objection completely. That is the bar any proposal here must clear.
+
+### Shapes worth weighing — the decision is the direction, not the mechanism
+
+Still deliberately not narrowed. The owner's 2026-08-16 decision chose **that** a seam exists, not **which**
+one; the choice interacts with
+[ProphetsWay.EFTools FR 6](../../ProphetsWay.EFTools/docs/feature-requests.md#6--rebuild-prophetswayeftoolstests-on-the-3x-factory-and-scope-traits)
+and belongs to whoever picks that up **after Lap 1**.
+
+| Shape | Note |
+|---|---|
+| **Restore an overridable hook on `BaseUnitTests<T>`**, defaulting to `TestDataAccessFactory.CreateAs<T>()` | Closest to what existed, and the adapters return. The reason it was removed — six files of pure ceremony — was a real cost, and it comes back. **See the sketch below**, which is the only shape anyone has written down concretely — and it is a sketch, not a design decision |
+| **A settable `Func<IExampleDataAccess>` on `TestDataAccessFactory`**, defaulted to the current line | Smallest change; the default stays visible and obvious. Introduces mutable static state into a suite that currently has none, which is a genuine objection |
+| **Ship the tests as a package or shared-source item** a second repository consumes and parameterizes | The most correct and the most expensive. It is the conformance kit in [ProphetsWay.BaseDataAccess FR 1](../../ProphetsWay.BaseDataAccess/docs/feature-requests.md) in all but name, and it should not be built twice |
+| ~~**Do nothing; the Entity Framework repository writes its own suite**~~ | **Struck 2026-08-16 — this is shape A and the owner declined it.** Kept rather than deleted because the reason is the point: two copies of the assertions that must be kept in step, and the moment they diverge *"the tests do not change to accommodate it"* stops being checkable |
+
+#### A mechanism that was proposed and cannot work — recorded so it is not re-proposed
+
+**The suggestion:** change `TestDataAccessFactory.Create()` from `public static` to `protected`, and have a
+class inside `ProphetsWay.EFTools` override it.
+
+**It does not compile, for two independent reasons.** Verified 2026-08-16 by opening
+[`TestDataAccessFactory.cs`](../ProphetsWay.Example.Tests/TestDataAccessFactory.cs), whose declaration is
+`public static class TestDataAccessFactory` and whose member is `public static IExampleDataAccess Create()`:
+
+1. **A `static` class cannot declare a `protected` member.** Protected access exists for derived types, and a
+   static class can have none.
+2. **A `static` method is never virtual.** There is nothing to override even if the accessibility were legal.
+
+This is not a near-miss to be repaired with a keyword. Anything built on "override the factory method" is
+answering the problem with a mechanism C# does not have.
+
+#### A viable shape that was sketched — explicitly **not** adopted
+
+Recorded at the same fidelity as the failed one, so the next reader starts from something real:
+
+```csharp
+// SKETCH ONLY — not a design decision, not approved, not scheduled.
+protected virtual IExampleDataAccess CreateDataAccess() => TestDataAccessFactory.Create();
+```
+
+A **virtual hook with a default** on `BaseUnitTests<T>` rather than the abstract property that used to be
+there. The single obvious line in `Create()` stays intact and stays the default that every test in this
+repository takes, which is what satisfies [entry 8](#8--selecting-the-implementation-from-configuration-instead-of-a-code-edit)'s
+objection; a derived suite in another repository gets something that genuinely exists to override.
+
+**It is a candidate, not the design.** It was written down during the decision that chose shape B and carries
+none of that decision's authority. Its known cost is the one the first row of the table above names — the
+adapter classes come back — and whether that cost is worth paying is exactly what Lap 1 is expected to inform.
+
+### The strongest argument against doing anything
+
+**The single construction site is one of this repository's best thirty seconds**, and every shape above
+makes it slightly less true that *one line* is the whole story. A reader who opens
+`TestDataAccessFactory.cs` and finds a `Func` field, or a virtual hook, has been handed a mechanism where
+they were previously handed a fact. That is a real loss in a repository whose product is clarity, and it is
+paid by every reader to benefit exactly one consumer.
+
+The counter is that the one consumer is the *point* — the Entity Framework implementation is the second half
+of the argument, not an incidental user — and a demonstration nobody can actually run is not clearer than a
+mechanism that works. But the owner should weigh it rather than be told it is settled.
+
+### Explicitly out of scope for this entry
+
+Anything that makes this repository contain or reference a second implementation. That is
+[entry 10](#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one),
+**Rejected in all four variants**, and nothing here reopens it. A seam is not an implementation.
+
+---
+
+## 14 — Restoring `DateTimeKind` on a `Department` reached as a navigation property
+
+**Status:** **Proposed** — 2026-08-16. Filed as the record of an owner decision that **narrowed** a contract
+rule, and of the gap that narrowing deliberately leaves open. Nothing in this index covered the ground; it is
+a new entry rather than an extension of one.
+
+**The rule text is not restated here.** The binding wording is the `<remarks>` on
+[`IDepartmentDao`](../ProphetsWay.Example.DataAccess/IDaos/IDepartmentDao.cs), which an `Interface Architect`
+is applying the narrowing to. That file is the source of truth; this entry is the reasoning behind it.
+
+### The decision — 2026-08-16
+
+`IDepartmentDao` rule 18's **retrieval** clause binds **`IDepartmentDao`'s own reads only.**
+
+A `Department` reached as a **navigation property** through another Data Access Object's include carries the
+`DateTimeKind` the provider supplied — in practice `Unspecified`. That is **stated behaviour, not a defect**.
+
+### Why the rule had to be narrowed rather than enforced
+
+- **Relational providers do not persist `DateTimeKind`.** A value written as `Utc` comes back `Unspecified`
+  on every provider in play. Honouring the retrieval clause therefore requires the Data Access Object to
+  **re-stamp `Kind` after materialization** — there is no cheaper mechanism, because the information is gone
+  by the time the row arrives.
+- **Timestamp normalization is a per-Data-Access-Object mechanism.** The `ProphetsWay.EFTools` 3.x design
+  does the re-stamping through a `NormalizeRetrievedTimestamp` hook declared **only on the soft-delete Data
+  Access Object bases** — the ones that own the three timestamps in the first place.
+- **A hard Data Access Object has no such hook.** When `UserDao` materializes `User.Department`, it is
+  `UserDao`'s query doing the work, and `DepartmentDao`'s hook is not on it and cannot be. Enforcing the
+  broad reading would mean every hard Data Access Object knowing how to normalize every soft entity reachable
+  from its own — which is the opposite of the per-Data-Access-Object arrangement everything else uses.
+
+### Precedent — this is the same shape as `ApplyReadFilter`, already accepted
+
+An included `Department` **already bypasses `DepartmentDao`'s soft-delete read filter** and arrives populated
+even when soft-deleted, for exactly the same structural reason: the including Data Access Object owns the
+query. That behaviour is documented and accepted.
+
+**So the timestamp bypass is a second consequence of a boundary that was already drawn, not a new
+concession.** Anyone meeting it and reaching for "this is an inconsistency" should read it as the pair it
+belongs to.
+
+### The rejected alternative — recorded so it is not re-proposed
+
+**A global `DateTimeKind`-restoring value converter on the context.** Declined on two grounds:
+
+1. **It is indiscriminate.** It applies to *every* `DateTime` column in the model, not the three this contract
+   governs. A contract about `CreatedDate`/`UpdatedDate`/`DeletedDate` would be enforced by a mechanism that
+   also silently relabels every unrelated date a consumer maps.
+2. **Its reach is accidental.** It would take effect only for consumers who happen to derive from an optional
+   base type, so the rule would hold or not hold depending on a choice unrelated to the rule.
+
+### The cost this imposes on a consumer — stated plainly rather than buried
+
+An `Unspecified` `DateTime` passed to `.ToLocalTime()` is **treated as local and shifted by the machine's
+offset.** The result is a **silently wrong value, not an exception** — no throw, no warning, and a difference
+that is invisible on a machine running in UTC and wrong everywhere else.
+
+That is the whole reason this is filed as a request rather than closed as a note. The behaviour is defensible;
+its failure mode is quiet, which is the kind that reaches production.
+
+### What this repository looks like today — verified, not assumed
+
+Verified 2026-08-16 by searching `ProphetsWay.Example.Tests/` for `DateTimeKind`, `ShouldBeUtcStamp` and
+`ShouldContainStamp`. Every timestamp-`Kind` assertion in the suite is in
+[DepartmentDaoTests.cs](../ProphetsWay.Example.Tests/DepartmentDaoTests.cs) or
+[DepartmentDataAccessTests.cs](../ProphetsWay.Example.Tests/DepartmentDataAccessTests.cs), and every one of
+them runs against `IDepartmentDao`'s own reads — directly, or through the dispatcher's `Get<Department>`,
+which lands on the same Data Access Object. **No test asserts `Kind` on a `Department` reached through a
+navigation property.**
+
+**The narrowing therefore costs this suite no assertion and breaks no test.** It is a narrowing of what was
+*claimed*, not of what was *checked* — which is precisely why it needs a durable record: nothing would have
+failed to tell anyone.
+
+### What the request actually is
+
+Not "undo the narrowing." The open question is whether anything should be **built** for a consumer who needs
+`Kind` to survive an include — a normalization pass the including Data Access Object can opt into, an
+entity-level convention, or explicit guidance and nothing else.
+
+Judged against [The Bar](#the-bar-everything-here-is-judged-against), a demonstration here would cost domain
+space to teach a mechanism that does not exist yet, so **nothing is proposed for this repository's suite at
+this time.** What is proposed is that the question stay open and attached to this reasoning.
+
+### What would close it
+
+- A consumer meeting the silent `.ToLocalTime()` shift in practice — which turns this from a stated boundary
+  into a reported defect and changes the calculus.
+- Or the Entity Framework implementation reaching a point where a normalization pass on the including side is
+  cheap, at which point the narrowing can be revisited on evidence rather than on design.
+
+Until then the answer is: **the boundary is where the mechanism is**, and a reader who finds an `Unspecified`
+timestamp on an included `Department` has found this entry rather than a bug.
 
 

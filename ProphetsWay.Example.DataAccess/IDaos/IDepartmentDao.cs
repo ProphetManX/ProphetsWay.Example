@@ -130,8 +130,22 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 	/// the call that stamps it — <see cref="Department.CreatedDate"/> by <c>Insert</c>,
 	/// <see cref="Department.UpdatedDate"/> by <c>Update</c>, <see cref="Department.DeletedDate"/> by
 	/// <c>Delete</c>. Local time is never used. Each stamped value has a <see cref="DateTime.Kind"/> of
-	/// <see cref="DateTimeKind.Utc"/>, both on the instance written back to the caller and on an instance later
-	/// retrieved by <c>Get</c>, <c>GetAll</c> or <c>GetPaged</c>.
+	/// <see cref="DateTimeKind.Utc"/> on the instance written back to the caller, and again on an instance
+	/// later retrieved by <c>Get</c>, <c>GetAll</c> or <c>GetPaged</c> <i>on this interface</i>. It does not
+	/// bind a <see cref="Department"/> reached as a navigation property of an entity retrieved through another
+	/// Data Access Object — <see cref="User.Department"/> on a user returned by <see cref="IUserDao"/>, say —
+	/// which carries whatever <see cref="DateTime.Kind"/> the provider supplied, typically
+	/// <see cref="DateTimeKind.Unspecified"/> from a relational one, because restoring a kind the provider does
+	/// not persist is a per-Data-Access-Object mechanism and the Data Access Object that ran the read has none
+	/// for these three timestamps. A caller reading a timestamp off an included department must therefore treat
+	/// it as Coordinated Universal Time explicitly, with
+	/// <see cref="DateTime.SpecifyKind(DateTime, DateTimeKind)"/>, rather than trust the
+	/// <see cref="DateTime.Kind"/> it finds: an <see cref="DateTimeKind.Unspecified"/> value handed to
+	/// <see cref="DateTime.ToLocalTime"/> is taken for local time and shifted by the machine's offset, so the
+	/// failure is a silently wrong value and not an exception. This is the same shape as rule 9 — an include is
+	/// outside the mechanisms the retrieving Data Access Object applies to its own reads, which is equally why
+	/// a department reached through <see cref="User.Department"/> comes back populated even when it is
+	/// soft-deleted.
 	/// </para>
 	///
 	/// <para>
