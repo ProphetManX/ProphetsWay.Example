@@ -16,8 +16,8 @@ here by number._
 | `ProphetsWay.Example.DataAccess`, `.DataAccess.NoDB` | `netstandard2.0;net10.0` |
 | `ProphetsWay.Example.Tests` | `net48;net10.0` |
 | `ProphetsWay.BaseDataAccess` reference | `3.1.0` (NuGet `PackageReference`) |
-| Suite | 162 tests × 2 legs = **324 executions** |
-| Version | 3.1.0 in [app-variables.yml](../app-variables.yml) |
+| Suite | 164 tests × 2 legs = **328 executions** |
+| Version | 3.1.1 in [app-variables.yml](../app-variables.yml) |
 
 ---
 
@@ -39,7 +39,7 @@ change is in isolation.
 ### The load-bearing invariant
 
 [ProphetsWay.Example.Tests/TestDataAccessFactory.cs](../ProphetsWay.Example.Tests/TestDataAccessFactory.cs) is
-the only file in the test project that names a concrete implementation. One `return` repoints all 162 tests:
+the only file in the test project that names a concrete implementation. One `return` repoints all 164 tests:
 
 ```csharp
 public static IExampleDataAccess Create()
@@ -63,7 +63,7 @@ implementation under test.
 
 ## Proposed One-Sentence Purpose
 
-A worked domain, one in-memory Data Access Layer, and a 160-test suite written against interfaces only —
+A worked domain, one in-memory Data Access Layer, and a 164-test suite written against interfaces only —
 existing to prove, by being read and then re-pointed at a different implementation in one line, that the
 `ProphetsWay.BaseDataAccess` paradigm actually decouples business logic from data access.
 
@@ -194,17 +194,21 @@ in the contracts project's public surface fails the scope gate automatically.
   dictionary versus a relational engine is the radical difference the claim rests on; two relational engines is
   a configuration change. Recorded with its reasoning in
   [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays).
-- The behavioural specifications in XML `<remarks>` — the snapshot rule and ordering rule on
-  `IExampleDataAccess`, the 19 numbered rules on `IDepartmentDao`, the 10 on `ICompanyResourceDao`. These are
-  the executable specification, and they are the source of truth for behaviour; prose elsewhere indexes them
-  and must not restate them.
+- The behavioural specifications in XML `<remarks>` — the snapshot, ordering, identifier and row count rules
+  on `IExampleDataAccess`, the 19 numbered rules on `IDepartmentDao`, the 10 on `ICompanyResourceDao`. These
+  are the executable specification, and they are the source of truth for behaviour; prose elsewhere indexes
+  them and must not restate them. The identifier and row count rules were added on 2026-08-16; text naming
+  only the first two is superseded.
 - The `Scope` trait partition — `Contract` / `Characterization` / `Dispatcher` — and the honesty it enforces. A
   suite claiming total portability would be hiding the places a conforming implementation is allowed to differ.
-  **The split is 138 / 4 / 20 of 162**, measured by static trait count against every `[Fact]`, `[Theory]`
+  **The split is 139 / 5 / 20 of 164**, measured by static trait count against every `[Fact]`, `[Theory]`
   and `[InlineData]` in the test project on 2026-08-16. It was 138 / 2 / 20 of 160 until two mis-scoped
   assertions were retraited; because each retrait **split** its test rather than demoting it, `Contract`
-  held at 138 and the total rose by two. An earlier figure of 137 / 3 / 20 recorded in this document was a
-  mid-edit reading of a moving tree and never described a committed state — it is superseded, not disputed.
+  held at 138 and the total rose to 162. Two further tests were then added — closing a gate hole where a
+  cascading `Update` had been passing every `Contract` test — and `ShouldCallCustomUserFunctionality` moved
+  to `Characterization`, giving the current figures. An earlier figure of 137 / 3 / 20 recorded in this
+  document was a mid-edit reading of a moving tree and never described a committed state — it is superseded,
+  not disputed.
   Reasoning in
   [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays).
 - **A `Scope=Contract` assertion must trace to a stated rule** — an interface, a `<remarks>`, or a numbered
@@ -283,9 +287,9 @@ and the status. Nothing here is applied by this document.
 | 6 | ~~Refresh the stale claims in [docs/repo-profile.md](repo-profile.md) at the next analyst pass~~ — **Done in 3.1.0** | The analyst pass that produced the current `repo-profile.md` corrected all of them; see below | Trivial | No |
 | 7 | ~~Update `README.md` — test legs, TFMs, the `ProphetsWay.BaseDataAccess` version, and the EFTools claim~~ — **Done**, re-verified 2026-08-16 | All four statements now match the tree; the EFTools claim is stated with its pinned-submodule qualification rather than unqualified | Low | No |
 | 8 | Add a `v3.1.0` entry to `CHANGELOG.md` | Its most recent heading is `v3.0.0`; the retarget is a shipped, consumer-visible change. **`Changelog Author`'s edit to make** | Low | No |
-| 9 | ~~Retrait `UserDaoTests.ShouldGetCustomFunctionality` off `Contract`~~ — **Done 2026-08-16**, [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | It demanded of every implementer a literal that `IUserDao`'s `<remarks>` explicitly declines to specify, inside the filter offered as the conformance gate. `Test Designer` replaced the class-level trait with six method-level ones and **split** the test — `ShouldCallCustomUserFunctionality` keeps the contractual half, `ShouldGetCustomFunctionality` is now `Characterization` | Low | No — it removes an obligation |
+| 9 | ~~Retrait `UserDaoTests.ShouldGetCustomFunctionality` off `Contract`~~ — **Done 2026-08-16**, [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | It demanded of every implementer a literal that `IUserDao`'s `<remarks>` explicitly declines to specify, inside the filter offered as the conformance gate. `Test Designer` replaced the class-level trait with six method-level ones and **split** the test — `ShouldCallCustomUserFunctionality` keeps the contractual half, `ShouldGetCustomFunctionality` is now `Characterization`. **Superseded 2026-08-16:** `ShouldCallCustomUserFunctionality` has since moved to `Characterization` as well — nothing in `IUserDao` promises a no-throw call — and the contractual half is now `ShouldNotAdoptTheInstanceHandedToCustomUserFunctionality` | Low | No — it removes an obligation |
 | 10 | ~~Adopt the traceability rule for `Contract`-scoped assertions~~ — **Done 2026-08-16**, [FR 12](feature-requests.md#12--a-traceability-rule-for-contract-scoped-assertions) | An assertion wrongly in `Contract` is a demand made in the name of a specification that does not make it. The rule is now stated in `AGENTS.md` beside the `Scope` partition — the one place every agent loads on every request. It remains a **review convention with no enforcement mechanism**; FR 12 stays `Proposed` until it is enforceable, and only `Purpose Refiner` may change that status | Trivial | No |
-| 11 | ~~Correct the `Scope` trait counts wherever they are quoted~~ — **Done 2026-08-16** | The counts are **138 / 4 / 20 of 162**, 324 executions. Corrected in [README.md](../README.md), `AGENTS.md`, [repo-profile.md](repo-profile.md) and this file in one pass. `CHANGELOG.md` line 80 carries the same figure and was **deliberately left alone** — it sits under the `v3.0.0` heading, where 138 / 2 / 20 was accurate; editing a shipped release's notes to match a later tree is falsifying history, not fixing a typo | Trivial | No |
+| 11 | ~~Correct the `Scope` trait counts wherever they are quoted~~ — **Done 2026-08-16**, and **done again later the same day** | The counts were 138 / 4 / 20 of 162 at the first correction and are **139 / 5 / 20 of 164, 328 executions** now, after two tests were added and one was retraited. Corrected in [README.md](../README.md), `AGENTS.md`, [repo-profile.md](repo-profile.md) and this file in each pass. `CHANGELOG.md` line 80 carries the original figure and was **deliberately left alone** — it sits under the `v3.0.0` heading, where 138 / 2 / 20 was accurate; editing a shipped release's notes to match a later tree is falsifying history, not fixing a typo | Trivial | No |
 
 **Explicitly not recommended:** enabling `<Nullable>enable</Nullable>`. The projects multi-target
 `netstandard2.0`, which caps shared code at C# 7.3, so nullable reference types cannot work here regardless of
@@ -320,5 +324,5 @@ Neither of these is this document's to fix, and neither has been fixed yet.
 
 | Source | What is still wrong | Owner |
 | --- | --- | --- |
-| ~~`README.md`~~ | **Fixed since this was written.** The README now states two test legs (`net48`, `net10.0`), `netstandard2.0;net10.0` for the DAL projects, a `ProphetsWay.BaseDataAccess` **3.1.0** reference, and the EFTools claim qualified by the pinned submodule pointer. Its trait counts and suite size were corrected to 138 / 4 / 20 of 162 on 2026-08-16. Re-verified against the file, not inherited | `README Author` |
+| ~~`README.md`~~ | **Fixed since this was written.** The README now states two test legs (`net48`, `net10.0`), `netstandard2.0;net10.0` for the DAL projects, a `ProphetsWay.BaseDataAccess` **3.1.0** reference, and the EFTools claim qualified as pending. Its trait counts and suite size are **139 / 5 / 20 of 164**, 328 executions, re-measured 2026-08-16. Re-verified against the file, not inherited | `README Author` |
 | `CHANGELOG.md` | No `v3.1.0` entry — its most recent heading is `v3.0.0`. It must also **not** be back-edited for the trait counts: line 80 sits under `v3.0.0`, where 138 / 2 / 20 was accurate | `Changelog Author` |

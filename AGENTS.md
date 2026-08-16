@@ -297,17 +297,20 @@ against completely different DAL implementations with no changes.
 Because its job is to be *read*, clarity beats cleverness here. Prefer obvious code over concise
 code, and keep the domain model small enough to hold in your head.
 
-As of **3.0.0** it is also an **executable specification**: `IExampleDataAccess` carries two
-DAL-wide contract rules in its `<remarks>`, and the test suite is partitioned by a `Scope` trait so
-a newly written DAL can run the subset it is actually bound by.
+As of **3.0.0** it is also an **executable specification**: `IExampleDataAccess` carries DAL-wide
+contract rules in its `<remarks>`, and the test suite is partitioned by a `Scope` trait so a newly
+written DAL can run the subset it is actually bound by. **There are four such rules as of
+2026-08-16** — SNAPSHOT, ORDERING, IDENTIFIER and ROW COUNT. Earlier text here said two; that was
+accurate at 3.1.0 and is not now.
 
 **3.1.0 is a retarget plus documentation release.** No `.cs` file changed **in the release**, and the
 suite it shipped is byte-identical to 3.0.0's — which is precisely what makes its passing the evidence
-for the retarget. **That is a fact about v3.1.0 as shipped, not about the working tree.** Two test
+for the retarget. **That is a fact about v3.1.0 as shipped, not about the working tree.** Three `.cs`
 files have changed since it shipped — `SnapshotDeepCopyTests.cs` and `UserDaoTests.cs`, retraited and
-split on 2026-08-16 — so the tree now carries 162 tests where 3.1.0 shipped 160. Do not repeat the
-byte-identical claim against the current tree, and do not restate the released 3.1.0 as anything other
-than what it was.
+split on 2026-08-16 and then extended with a test each, and `IExampleDataAccess.cs`, which gained the
+IDENTIFIER and ROW COUNT rules the same day — so the tree now carries **164 tests** where 3.1.0
+shipped 160. Do not repeat the byte-identical claim against the current tree, and do not restate the
+released 3.1.0 as anything other than what it was.
 
 ### Documents
 
@@ -328,12 +331,14 @@ EFTools repo, `ProphetsWay.Example.DataAccess.EF` is a second implementation of 
 **The same tests pass against both** — that is the entire argument for the paradigm, and it is the
 thing any documentation of this repo must lead with.
 
-The claim is **currently pending, not false forever**: EFTools' submodule pointer is still pre-3.0.0,
-so its EF implementation has not yet met the 3.x contracts. See deviation 1 below before repeating
-the claim unqualified in prose meant for a reader.
+The claim is **currently pending, not false forever** — but the reason has moved. The EFTools
+submodule pointer was advanced on 2026-08-16 and now carries the 3.1.0 contracts; what has not
+happened is EFTools' own adoption of them. See deviation 1 below before repeating the claim
+unqualified in prose meant for a reader.
 
 `ProphetsWay.Example.Tests/TestDataAccessFactory.cs` is the **only** file in the suite that names a
-concrete implementation. Changing the single `return` in `Create` repoints all 162 tests. Do not
+concrete implementation — re-verified 2026-08-16 by a repo-wide search for `new ExampleDataAccess`,
+which matches once, in `Create`. Changing that single `return` repoints all 164 tests. Do not
 introduce a second construction site — doing so silently destroys the property this repo exists to
 demonstrate.
 
@@ -344,7 +349,7 @@ demonstrate.
 | `ProphetsWay.Example.DataAccess/` | Domain — `Entities/`, `IDaos/`, `Enums/`, `IExampleDataAccess` |
 | `ProphetsWay.Example.DataAccess.NoDB/` | In-memory DAL implementation (`DataStore`, `StoreTable`, `StoreList`, `TransactionLog`, `Daos/`) |
 | `ProphetsWay.Example.Database/` | SQL database project — SDK-style `Microsoft.Build.Sql/2.2.0` |
-| `ProphetsWay.Example.Tests/` | xUnit + Shouldly, 162 tests written against the interfaces, not an implementation |
+| `ProphetsWay.Example.Tests/` | xUnit + Shouldly, 164 tests written against the interfaces, not an implementation |
 
 TFMs as of **3.1.0** are `netstandard2.0;net10.0` for both DAL projects and `net48;net10.0` for the
 tests — the current house standard, in canonical dotted form. `ProphetsWay.BaseDataAccess` reached the
@@ -357,8 +362,9 @@ leg exists to verify .NET Framework *behavior*: `Activator.CreateInstance<T>()` 
 constructor there and does not on .NET Core, which is what the `ConventionShowcase`
 exception-passthrough guard pins. Do not report the split as drift.
 
-The suite runs 162 tests on each leg — **324 executions**. `ProphetsWay.BaseDataAccess` is consumed as
-a NuGet `PackageReference` at **3.1.0**, never as a project reference.
+The suite runs 164 tests on each leg — **328 executions**. `ProphetsWay.BaseDataAccess` is consumed as
+a NuGet `PackageReference` at **3.1.0**, never as a project reference — verified in
+`ProphetsWay.Example.DataAccess.csproj`, which carries the only `PackageReference` to it.
 
 ### Domain Model
 
@@ -393,6 +399,16 @@ source of truth; this is an index, not a restatement.
   windows partition a full pass with no overlap or omission. A SQL-backed DAL satisfies this only
   with an explicit `ORDER BY` — omit it and the suite passes today and fails intermittently at some
   future row count.
+- **The identifier rule**, added to `IExampleDataAccess` on 2026-08-16 and binding on every DAO whose
+  entity has an identifier: `Insert` assigns the generated identifier back onto the caller's instance.
+  It is the one write-back the snapshot rule's closing sentence anticipates.
+  `ICompanyResourceDao` is outside it — there is no identifier to assign, which is the absence of one
+  rather than a refusal of this one.
+- **The row count rule**, added the same day and binding on every DAO: `Update` and `Delete` return
+  the number of rows the call matched and wrote. `IDepartmentDao`'s soft-delete rules and
+  `ICompanyResourceDao`'s rule 4 are that rule applied to a narrower notion of a match, not
+  exceptions to it. Both new rules are conventions **elected here**, not changes to
+  `ProphetsWay.BaseDataAccess`.
 - **Transactions are scoped to the DAL instance, not the store.** `TransactionLog` is an instance
   field on `ExampleDataAccess` deliberately. Moving it to `DataStore` would let one instance roll
   back another's writes.
@@ -402,12 +418,15 @@ source of truth; this is an index, not a restatement.
   concurrently running tests.
 - **The `Scope` trait partition is load-bearing**, and every test still carries exactly one — verified
   by static count of every `[Fact]`, `[Theory]`, `[InlineData]` and `[Trait("Scope", …)]` in the test
-  project on 2026-08-16. `Contract` (138) is what any conforming implementation must pass;
-  `Characterization` (4) pins choices this implementation made that the contract does not require;
+  project on 2026-08-16. `Contract` (139) is what any conforming implementation must pass;
+  `Characterization` (5) pins choices this implementation made that the contract does not require;
   `Dispatcher` (20) exercises the reflection convention in `ProphetsWay.BaseDataAccess` itself and
-  belongs to no DAL. **They sum to the suite total, 162, and that sum is the check** — a mismatch
+  belongs to no DAL. **They sum to the suite total, 164, and that sum is the check** — a mismatch
   means a test is untraited or double-traited, which is the defect the partition exists to prevent.
   Adding a test without a trait breaks `dotnet test --filter "Scope=Contract"` as a usable gate.
+  **Any figure of 138 / 4 / 20 of 162, or 160, or 324 executions, is superseded** — two tests were
+  added on 2026-08-16, closing a gate hole where a cascading `Update` had been passing all 138
+  `Contract` tests.
 - **Four classes declare `Scope` per method rather than per class** — `CompanyDaoTests`,
   `DataAccessTransactionTests`, `SnapshotDeepCopyTests`, `UserDaoTests`. Each mixes scopes, and
   **xUnit accumulates traits rather than letting a method override its class**, so a class-level
@@ -450,7 +469,7 @@ Do not copy their reasoning back into this file; ending that duplication is why 
 
 | # | Deviation | Notes |
 |---|---|---|
-| 1 | **`ProphetsWay.EFTools` consumes this repo as a git submodule** | **It is a submodule, not a vendored copy — earlier versions of this file said otherwise and were wrong.** `ProphetsWay.EFTools/.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The two therefore **cannot drift**; the submodule is simply *pinned*, currently at `967fd26`, **pre-3.0.0**. The real consequence is a **coordination requirement, not a duplication problem**: `ProphetsWay.Example.DataAccess.EF` implements a contract that no longer exists, and 3.1.0 puts it further behind still. Never edit files under `ProphetsWay.EFTools/ProphetsWay.Example/` — edit here and advance the pointer. Tracked as [FR 5](docs/feature-requests.md). |
+| 1 | **`ProphetsWay.EFTools` consumes this repo as a git submodule** | **It is a submodule, not a vendored copy — earlier versions of this file said otherwise and were wrong.** `ProphetsWay.EFTools/.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The two therefore **cannot drift**; the submodule is simply *pinned*. **The pointer was advanced on 2026-08-16 and is now `d845863`** — the tip of this repo's `main`, i.e. the **3.1.0** tree. Verified by reading `ProphetsWay.EFTools/.git/modules/ProphetsWay.Example/HEAD` against `.git/refs/heads/main` here; the two are the same commit. Earlier text saying `967fd26`, pre-3.0.0, is superseded. **The consequence has moved, not closed:** the contracts the submodule carries are current, but `ProphetsWay.EFTools/ProphetsWay.Example.DataAccess.EF/ProphetsWay.Example.DataAccess.EF.csproj` and `ProphetsWay.EFTools/ProphetsWay.EFTools/ProphetsWay.EFTools.csproj` both still reference `ProphetsWay.BaseDataAccess` **2.5.0**, so the EF implementation has still not been demonstrated against the 3.x contracts. Never edit files under `ProphetsWay.EFTools/ProphetsWay.Example/` — edit here and advance the pointer. Tracked as [FR 5](docs/feature-requests.md). |
 | 2 | Has `app-variables.yml` / `local-pipeline.yml` despite not being published | **Correct and verified.** `PostTargetToNuGet` and `TargetProject` are both commented out; the pipeline builds and tests only. |
 | 3 | Not packaged; packaging metadata is empty stubs | Correct and intentional. A teaching artifact is not a package — do not fill these in. `docs/nuget-extraction-proposal.md` is `n/a` here, not missing. |
 | 4 | Visual Studio cannot open the SDK-style `.sqlproj` | A VS 2022/2026 limitation, not a defect. The migration is what makes `dotnet build` work on the solution at all. VS Code, SSMS 22, and the .NET CLI are fine; a VS user can unload the database project and work on the three C# projects normally. |
@@ -480,10 +499,11 @@ re-verified by opening `README.md` on 2026-08-16, not inherited:
 - The Visual Studio note is present: the README says VS 2022/2026 cannot open an SDK-style `.sqlproj`
   and points at *Building & Testing Locally*. [FR 7](docs/feature-requests.md) is still filed
   `Proposed`; only `Purpose Refiner` may close it.
-- The EFTools claim is now stated **with** its qualification — the submodule pointer is named as
-  pinned at the 3.0.0 branch point, so the claim reads as pending rather than unconditional.
+- The EFTools claim is now stated **with** its qualification, so it reads as pending rather than
+  unconditional. Its *reason* was corrected on 2026-08-16: the submodule pointer is no longer behind,
+  but EFTools' own projects are still on `ProphetsWay.BaseDataAccess` 2.5.0. See deviation 1.
 - The build facts are current: `netstandard2.0`/`net10.0` for the DAL projects, `net48`/`net10.0` for
-  the tests, a `ProphetsWay.BaseDataAccess` **3.1.0** reference, two legs, and **162 tests / 324
+  the tests, a `ProphetsWay.BaseDataAccess` **3.1.0** reference, two legs, and **164 tests / 328
   executions**.
 
 `CHANGELOG.md` has no v3.1.0 entry yet; that belongs to `Changelog Author`. It must **not** be

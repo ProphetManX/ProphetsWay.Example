@@ -4,7 +4,7 @@
 Build Status:  
 [![Build Status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/ProphetManX.ProphetsWay.Example?repoName=ProphetManX%2FProphetsWay.Example&branchName=main)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=24&repoName=ProphetManX%2FProphetsWay.Example&branchName=main)
 
-_This document describes **v3.1.0**. If you change behavior, contracts, target frameworks, or test
+_This document describes **v3.1.1**. If you change behavior, contracts, target frameworks, or test
 counts, update this marker in the same change — it is how anyone can tell whether the README still
 matches the tree._
 
@@ -36,11 +36,12 @@ Everything in this repository is answerable to that paragraph, and it is why the
 minutes of your time.
 
 **Where the second implementation currently stands.** `ProphetsWay.EFTools` consumes this repository as a
-**git submodule**, and that pointer is pinned at commit `967fd26` — the 3.0.0 branch point. So its
-`ProphetsWay.Example.DataAccess.EF` implements the pre-3.0.0 contract: no `Dispose`, no `Department`, no
-`CompanyResource`, no snapshot rule. **The design property holds — a submodule cannot drift, only lag — but
-the second implementation has not yet been demonstrated against the 3.x contracts.** Advancing that pointer
-is work in the EFTools repository, tracked here as
+**git submodule**, and that pointer was advanced on 2026-08-16 to commit `d845863` — the tip of `main`, the
+3.1.0 tree. So the contracts it carries are current. What has not happened is EFTools' own adoption of them:
+its `ProphetsWay.Example.DataAccess.EF` still references `ProphetsWay.BaseDataAccess` **2.5.0** and still
+implements the pre-3.0.0 contract — no `Dispose`, no `Department`, no `CompanyResource`, no snapshot rule.
+**The design property holds — a submodule cannot drift, only lag — but the second implementation has not yet
+been demonstrated against the 3.x contracts.** That work lives in the EFTools repository, tracked here as
 [FR 5](docs/feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts). Read the
 claim above as *pending re-demonstration*, not as a claim this repository is quietly walking back.
 
@@ -134,12 +135,12 @@ Every test carries a `Scope` trait saying who it binds.
 
 | `Scope` | Tests | Who has to pass it |
 |---|---|---|
-| `Contract` | 138 | Every implementation of `IExampleDataAccess`. These are the rules the interfaces state. |
-| `Characterization` | 4 | This implementation only. Another DAL may legitimately fail them. |
+| `Contract` | 139 | Every implementation of `IExampleDataAccess`. These are the rules the interfaces state. |
+| `Characterization` | 5 | This implementation only. Another DAL may legitimately fail them. |
 | `Dispatcher` | 20 | Nobody's DAL. They pin the reflection convention in `ProphetsWay.BaseDataAccess` itself. |
 
-**The honest answer to "will all 162 of these pass against my implementation?" is: all but four, and here is
-exactly which four.**
+**The honest answer to "will all 164 of these pass against my implementation?" is: all but five, and here is
+exactly which five.**
 
 - `CompanyDaoTests.ShouldGetCustomCompanyFunction` — `ICompanyDao.GetCustomCompanyFunction(int)` stands in
   for whatever query your domain adds beyond the surface it inherits, and the interface deliberately says
@@ -152,19 +153,24 @@ exactly which four.**
 - `UserDaoTests.ShouldGetCustomFunctionality` — asserts the literal this implementation stamps onto
   `User.Whatever`. `IUserDao`'s `<remarks>` decline in as many words to say what `CustomUserFunctionality`
   does or what it writes back, so an implementation that wrote nothing, or wrote something else, is equally
-  conforming. Its sibling `ShouldCallCustomUserFunctionality` is the `Contract` half: the member exists and
-  can be called.
+  conforming.
+- `UserDaoTests.ShouldCallCustomUserFunctionality` — observes only that the in-memory implementation
+  completes without throwing. Nothing in `IUserDao` promises a no-throw call, so as `Contract` it placed an
+  obligation on every implementer that no rule makes. The `Contract` half of that trio is
+  `ShouldNotAdoptTheInstanceHandedToCustomUserFunctionality`, which pins the one thing `IUserDao` does
+  state: the instance is read rather than adopted.
 - `SnapshotDeepCopyTests.ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt` — requires
   an edit made through `User.Company` to read back through that navigation property while the `Companies` row
   still carries the old name. Only a store that denormalizes can do both at once; a normalized relational
   store holds one row and reads it back through a join. Its sibling
-  `ShouldRestoreANavigationPropertyEditedInsideARolledBackTransaction` is the `Contract` half.
+  `ShouldReadEverythingAsItWasBeforeARolledBackTransactionThatEditedANavigationProperty` is the `Contract`
+  half.
 
 The `Dispatcher` tests live in `ConventionShowcase/` and construct their own deliberately mis-wired DALs.
 They never touch the factory, so swapping the suite onto another implementation must leave them exactly as
 they are — they are tests to read, not a target to hit.
 
-That split is the point. A suite claiming total portability would be hiding the four places a different
+That split is the point. A suite claiming total portability would be hiding the five places a different
 implementation is allowed to differ, and hiding them is how a paradigm gets found out.
 
 ---
@@ -197,8 +203,8 @@ alongside `IBaseDataAccess`, and that single interface is what business logic in
 An in-memory implementation, written so that this DAL — and any implementation of it — can be unit tested
 without a database, locally and in a build pipeline alike.
 [ProphetsWay.EFTools](https://github.com/ProphetManX/ProphetsWay.EFTools) implements the same contract on
-Entity Framework and reuses these tests — currently from a submodule pointer pinned before the 3.x
-contracts landed. See [Where the second implementation currently stands](#why-this-repository-exists).
+Entity Framework and reuses these tests — currently against the 2.x contracts, with its own adoption of the
+3.x ones still outstanding. See [Where the second implementation currently stands](#why-this-repository-exists).
 
 `DataStore` is a static class holding one `StoreTable` per entity, standing in for the database itself
 rather than for a connection to it. Every write passes through it and hands an undo entry to a
@@ -220,8 +226,8 @@ VS Code and the .NET CLI all handle it. See
 
 #### ProphetsWay.Example.Tests
 
-The most useful part of the repository. xUnit and Shouldly, 162 tests, run on two legs — `net48` and
-`net10.0` — for **324 executions**. By default they run against the in-memory implementation, but every test
+The most useful part of the repository. xUnit and Shouldly, 164 tests, run on two legs — `net48` and
+`net10.0` — for **328 executions**. By default they run against the in-memory implementation, but every test
 class takes its DAL from `TestDataAccessFactory.Create` — point that one method at any class implementing
 `IExampleDataAccess`, backed by anything you like, and the suite tests your implementation instead. Every
 test carries a `Scope` trait, so you can run only the ones your implementation is bound by.
@@ -624,8 +630,8 @@ dotnet test
 ```
 
 The whole solution — database project included — builds with the .NET CLI. No database server is required
-to run the tests: they use the in-memory implementation by default. Expect 162 tests on each of `net48` and
-`net10.0` — **324 executed cases**.
+to run the tests: they use the in-memory implementation by default. Expect 164 tests on each of `net48` and
+`net10.0` — **328 executed cases**.
 
 Every test carries a `Scope` trait, so you can run a subset:
 

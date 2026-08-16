@@ -265,11 +265,19 @@ affects whether its central claim is currently true.
 
 `ProphetsWay.EFTools` consumes this repository as a **git submodule**, not a vendored copy — its
 `.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The
-two therefore cannot drift; the submodule is **pinned**, currently at the 3.0.0 branch point.
+two therefore cannot drift; the submodule is **pinned**.
+
+**Factual correction, 2026-08-16 — the first step of this entry has landed.** The pointer is no longer at the
+3.0.0 branch point: it was advanced to **`d845863`**, the tip of this repository's `main` and therefore the
+**3.1.0** tree. Verified by reading `ProphetsWay.EFTools/.git/modules/ProphetsWay.Example/HEAD` against
+`.git/refs/heads/main` here — the two are the same commit. The rest of the entry is unaffected and the status
+line above is deliberately untouched; only `Purpose Refiner` may change it.
 
 The consequence is a coordination requirement rather than a duplication problem. `ProphetsWay.Example.DataAccess.EF`
-implements the *pre-3.0.0* `IExampleDataAccess`: no `Dispose`, no `Department`, no `CompanyResource`, no
-snapshot rule, no ordering rule. So the README's headline sentence —
+still implements the *pre-3.0.0* `IExampleDataAccess` — no `Dispose`, no `Department`, no `CompanyResource`, no
+snapshot rule, no ordering rule — and both it and `ProphetsWay.EFTools` itself still reference
+`ProphetsWay.BaseDataAccess` **2.5.0**, verified in their two `.csproj` files. So the README's headline
+sentence —
 
 > "`ProphetsWay.EFTools` carries an Entity Framework implementation of the very same `IExampleDataAccess`
 > contract, and the tests do not change to accommodate it."
@@ -277,7 +285,8 @@ snapshot rule, no ordering rule. So the README's headline sentence —
 — is true of the old pinned commit and **false of the current contracts**. The single sentence that makes this
 repository worth reading is, right now, a statement about history.
 
-**The work**, all of it in `ProphetsWay.EFTools`: advance the pointer, add the two new entities and their Data
+**The work**, the remainder of it in `ProphetsWay.EFTools`: ~~advance the pointer~~ (done), add the two new
+entities and their Data
 Access Object interfaces to the Entity Framework implementation, implement `Dispose` and the three transaction
 members against the real context, and satisfy the snapshot and ordering rules — the ordering rule in
 particular requires an explicit `ORDER BY` on both `GetAll` and `GetPaged`, which is precisely the divergence
