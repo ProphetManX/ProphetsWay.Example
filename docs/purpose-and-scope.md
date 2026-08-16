@@ -1,6 +1,8 @@
 # Purpose & Scope — ProphetsWay.Example
 
 _Written 2026-08-15, against the working tree at v3.1.0, immediately after the `Modernizer` retarget pass.
+**Amended 2026-08-16** for the two `Scope` retraits — the trait counts, the suite size, and the status of the
+README items are the amended values and were re-measured rather than carried forward.
 The factual base — project inventory, API surface, test counts, packaging audit — is
 [docs/repo-profile.md](repo-profile.md) and is not re-derived here; where this document and that one disagree,
 the disagreement is called out explicitly under [Stale Claims — Corrected in 3.1.0](#stale-claims--corrected-in-310).
@@ -14,7 +16,7 @@ here by number._
 | `ProphetsWay.Example.DataAccess`, `.DataAccess.NoDB` | `netstandard2.0;net10.0` |
 | `ProphetsWay.Example.Tests` | `net48;net10.0` |
 | `ProphetsWay.BaseDataAccess` reference | `3.1.0` (NuGet `PackageReference`) |
-| Suite | 160 tests × 2 legs = **320 executions**, green |
+| Suite | 162 tests × 2 legs = **324 executions** |
 | Version | 3.1.0 in [app-variables.yml](../app-variables.yml) |
 
 ---
@@ -37,7 +39,7 @@ change is in isolation.
 ### The load-bearing invariant
 
 [ProphetsWay.Example.Tests/TestDataAccessFactory.cs](../ProphetsWay.Example.Tests/TestDataAccessFactory.cs) is
-the only file in the test project that names a concrete implementation. One `return` repoints all 160 tests:
+the only file in the test project that names a concrete implementation. One `return` repoints all 162 tests:
 
 ```csharp
 public static IExampleDataAccess Create()
@@ -100,19 +102,22 @@ headline claim and the state of a sibling repository.
    unconditional. In a repository whose product is comprehension, teaching half of a documented split *is*
    drift. Captured as [feature request 1](feature-requests.md#1--demonstrate-the-accepting-half-of-gettnull).
 
-3. **The README still describes a tree that no longer exists**, and `CHANGELOG.md` has no `v3.1.0` entry.
-   `AGENTS.md` and [docs/repo-profile.md](repo-profile.md) carried the same drift and were corrected during
-   3.1.0 — see [Stale Claims — Corrected in 3.1.0](#stale-claims--corrected-in-310) and the
+3. ~~**The README still describes a tree that no longer exists**~~ — **fixed since this was written**,
+   re-verified against `README.md` on 2026-08-16. `CHANGELOG.md` still has no `v3.1.0` entry.
+   `AGENTS.md` and [docs/repo-profile.md](repo-profile.md) carried the same drift and were corrected
+   during 3.1.0 — see [Stale Claims — Corrected in 3.1.0](#stale-claims--corrected-in-310) and the
    [Still Open](#still-open--owned-by-other-agents) table beneath it.
 
-4. **The `Contract` scope over-claimed, in two places, and one of them is still uncorrected.** Two assertions
+4. **The `Contract` scope over-claimed, in two places. Both are now corrected.** Two assertions
    were marked `Scope=Contract` — binding every conforming DAL — while actually encoding choices of the
    in-memory store: one requiring a row shape only a denormalized store can produce, one pinning a string
    literal that `IUserDao`'s `<remarks>` explicitly declines to specify. Since
    `dotnet test --filter "Scope=Contract"` is offered as *the* conformance gate, an over-claiming `Contract`
-   scope is the repository failing at its stated job, and it is the sharpest drift on this list. The first is
-   retraited; the second is authorized and outstanding. Captured with the full reasoning — and with the
-   decision that `.NoDB` stays — as
+   scope is the repository failing at its stated job, and it was the sharpest drift on this list. Both were
+   retraited on 2026-08-16, each by **splitting** the test rather than demoting it — the genuinely
+   contractual half stayed in `Contract` and a new `Characterization` sibling took the over-claim, which is
+   why the suite total rose from 160 to 162 while `Contract` held at 138. Captured with the full reasoning
+   — and with the decision that `.NoDB` stays — as
    [feature request 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays).
 
    **Both were found by someone attempting a second implementation with different physical constraints**, which
@@ -195,10 +200,18 @@ in the contracts project's public surface fails the scope gate automatically.
   and must not restate them.
 - The `Scope` trait partition — `Contract` / `Characterization` / `Dispatcher` — and the honesty it enforces. A
   suite claiming total portability would be hiding the places a conforming implementation is allowed to differ.
-  **The split is currently 137 / 3 / 20 of 160**, verified against the tree on 2026-08-15; it was 138 / 2 / 20
-  until a mis-scoped assertion was retraited this session, and becomes 136 / 4 / 20 when the second retrait
-  lands. Earlier documents quoting 138 / 2 / 20 are stale, not wrong at the time — see
+  **The split is 138 / 4 / 20 of 162**, measured by static trait count against every `[Fact]`, `[Theory]`
+  and `[InlineData]` in the test project on 2026-08-16. It was 138 / 2 / 20 of 160 until two mis-scoped
+  assertions were retraited; because each retrait **split** its test rather than demoting it, `Contract`
+  held at 138 and the total rose by two. An earlier figure of 137 / 3 / 20 recorded in this document was a
+  mid-edit reading of a moving tree and never described a committed state — it is superseded, not disputed.
+  Reasoning in
   [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays).
+- **A `Scope=Contract` assertion must trace to a stated rule** — an interface, a `<remarks>`, or a numbered
+  DAO rule. If nothing states it, the assertion is `Characterization`. The canonical statement of this rule
+  lives in `AGENTS.md` beside the `Scope` partition, which is the text every agent loads; it is not restated
+  here. Reasoning and limits:
+  [FR 12](feature-requests.md#12--a-traceability-rule-for-contract-scoped-assertions).
 - `ConventionShowcase/` as the home for base-library behaviours that a reader benefits from seeing but that
   the domain should not carry.
 - The SQL database project, as the schema a database-backed implementation of these contracts would target.
@@ -268,11 +281,11 @@ and the status. Nothing here is applied by this document.
 | 4 | ~~Genericize `ProphetsWay.Example.localhost.publish.xml`~~ — **Done in 3.1.0**, [FR 6](feature-requests.md#6--the-committed-developer-specific-publish-profile) | Removing or gitignoring the file was considered and **declined**: a teaching repository benefits from shipping a working publish profile. Resolved by genericization in place — line 7 changed `Data Source=Terebellum` → `Data Source=localhost`, a single token, nothing else altered. The file remains tracked, is not gitignored, and the `.sqlproj` `<None Include>` reference is unchanged | Trivial | No |
 | 5 | ~~Point the "Not demonstrated" table in `AGENTS.md` at [docs/feature-requests.md](feature-requests.md) rather than restating the four gaps~~ — **Done in 3.1.0** | `AGENTS.md` is rewritten by `Repo Analyst` on every pass, so decisions recorded only there are not durable. Its "Coverage" section now links to entries 1–4 instead of restating them | Trivial | No |
 | 6 | ~~Refresh the stale claims in [docs/repo-profile.md](repo-profile.md) at the next analyst pass~~ — **Done in 3.1.0** | The analyst pass that produced the current `repo-profile.md` corrected all of them; see below | Trivial | No |
-| 7 | Update `README.md` — test legs, TFMs, the `ProphetsWay.BaseDataAccess` version, and the EFTools claim | Four statements in the README are measurably false against this tree; they are enumerated in the README-accuracy table in [docs/repo-profile.md](repo-profile.md). **`README Author`'s edit to make** | Low | No |
+| 7 | ~~Update `README.md` — test legs, TFMs, the `ProphetsWay.BaseDataAccess` version, and the EFTools claim~~ — **Done**, re-verified 2026-08-16 | All four statements now match the tree; the EFTools claim is stated with its pinned-submodule qualification rather than unqualified | Low | No |
 | 8 | Add a `v3.1.0` entry to `CHANGELOG.md` | Its most recent heading is `v3.0.0`; the retarget is a shipped, consumer-visible change. **`Changelog Author`'s edit to make** | Low | No |
-| 9 | Retrait `UserDaoTests.ShouldGetCustomFunctionality` off `Contract` — [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | It demands of every implementer a literal that `IUserDao`'s `<remarks>` explicitly declines to specify, inside the filter offered as the conformance gate. Needs the class-level trait split across its five `[Fact]`s, because xUnit accumulates traits. **`Test Designer`'s edit to make** | Low | No — it removes an obligation |
-| 10 | Adopt the traceability rule for `Contract`-scoped assertions — [FR 12](feature-requests.md#12--a-traceability-rule-for-contract-scoped-assertions) | An assertion wrongly in `Contract` is a demand made in the name of a specification that does not make it; the rule costs a sentence and would have caught one of the two mis-scopes on sight | Trivial | No |
-| 11 | Correct the `Scope` trait counts wherever they are quoted | [README.md](../README.md) line 137, `AGENTS.md` line 399 and [repo-profile.md](repo-profile.md) lines 41 and 330 all still say `Contract` 138 / `Characterization` 2 / `Dispatcher` 20. It is 137 / 3 / 20 today and 136 / 4 / 20 after refinement 9. **Each file is its own owner's.** `CHANGELOG.md` line 80 carries the same figure and must **not** be corrected — it sits under the `v3.0.0` heading, where 138 was accurate; editing a shipped release's notes to match a later tree is falsifying history, not fixing a typo | Trivial | No |
+| 9 | ~~Retrait `UserDaoTests.ShouldGetCustomFunctionality` off `Contract`~~ — **Done 2026-08-16**, [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | It demanded of every implementer a literal that `IUserDao`'s `<remarks>` explicitly declines to specify, inside the filter offered as the conformance gate. `Test Designer` replaced the class-level trait with six method-level ones and **split** the test — `ShouldCallCustomUserFunctionality` keeps the contractual half, `ShouldGetCustomFunctionality` is now `Characterization` | Low | No — it removes an obligation |
+| 10 | ~~Adopt the traceability rule for `Contract`-scoped assertions~~ — **Done 2026-08-16**, [FR 12](feature-requests.md#12--a-traceability-rule-for-contract-scoped-assertions) | An assertion wrongly in `Contract` is a demand made in the name of a specification that does not make it. The rule is now stated in `AGENTS.md` beside the `Scope` partition — the one place every agent loads on every request. It remains a **review convention with no enforcement mechanism**; FR 12 stays `Proposed` until it is enforceable, and only `Purpose Refiner` may change that status | Trivial | No |
+| 11 | ~~Correct the `Scope` trait counts wherever they are quoted~~ — **Done 2026-08-16** | The counts are **138 / 4 / 20 of 162**, 324 executions. Corrected in [README.md](../README.md), `AGENTS.md`, [repo-profile.md](repo-profile.md) and this file in one pass. `CHANGELOG.md` line 80 carries the same figure and was **deliberately left alone** — it sits under the `v3.0.0` heading, where 138 / 2 / 20 was accurate; editing a shipped release's notes to match a later tree is falsifying history, not fixing a typo | Trivial | No |
 
 **Explicitly not recommended:** enabling `<Nullable>enable</Nullable>`. The projects multi-target
 `netstandard2.0`, which caps shared code at C# 7.3, so nullable reference types cannot work here regardless of
@@ -307,5 +320,5 @@ Neither of these is this document's to fix, and neither has been fixed yet.
 
 | Source | What is still wrong | Owner |
 | --- | --- | --- |
-| `README.md` | Claims the suite runs on `net48`, `net8.0`, `net9.0`; claims the DAL projects build for `netstandard2.0`, `net48`, `net8.0`, `net9.0`; claims a `ProphetsWay.BaseDataAccess` `3.0.0` reference; states the EFTools claim unqualified when its submodule pointer is still pre-3.0.0. Enumerated with line references in the README-accuracy table in [docs/repo-profile.md](repo-profile.md) | `README Author` |
-| `CHANGELOG.md` | No `v3.1.0` entry — its most recent heading is `v3.0.0` | `Changelog Author` |
+| ~~`README.md`~~ | **Fixed since this was written.** The README now states two test legs (`net48`, `net10.0`), `netstandard2.0;net10.0` for the DAL projects, a `ProphetsWay.BaseDataAccess` **3.1.0** reference, and the EFTools claim qualified by the pinned submodule pointer. Its trait counts and suite size were corrected to 138 / 4 / 20 of 162 on 2026-08-16. Re-verified against the file, not inherited | `README Author` |
+| `CHANGELOG.md` | No `v3.1.0` entry — its most recent heading is `v3.0.0`. It must also **not** be back-edited for the trait counts: line 80 sits under `v3.0.0`, where 138 / 2 / 20 was accurate | `Changelog Author` |

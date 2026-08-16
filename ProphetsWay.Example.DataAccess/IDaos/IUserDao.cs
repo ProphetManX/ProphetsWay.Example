@@ -19,6 +19,15 @@ namespace ProphetsWay.Example.DataAccess.IDaos
 	/// does, and what if anything it writes back onto the caller's instance, is the implementation's to define.
 	/// The snapshot rule binds it regardless.
 	/// </para>
+	/// <para>
+	/// The Data-Access-Layer-wide identifier and row count rules on <see cref="IExampleDataAccess"/> bind this
+	/// Data Access Object as well. <c>Insert</c> assigns <see cref="Entities.BaseIntEntity.Id"/> onto the
+	/// instance the caller passed in, so the identifier is read off that instance after the call and not before.
+	/// <c>Update</c> and <c>Delete</c> return <c>1</c> when that identifier matched a stored user and <c>0</c>
+	/// when it matched none — <c>1</c> from <c>Update</c> even where the incoming values are identical to the
+	/// stored ones, because the count reports that a row matched rather than that a value changed. Neither rule
+	/// says anything about <see cref="CustomUserFunctionality"/>, which remains the implementation's to define.
+	/// </para>
 	/// </remarks>
 	public interface IUserDao : IBaseDao<User>
 	{

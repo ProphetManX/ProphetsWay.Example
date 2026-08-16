@@ -135,11 +135,11 @@ Every test carries a `Scope` trait saying who it binds.
 | `Scope` | Tests | Who has to pass it |
 |---|---|---|
 | `Contract` | 138 | Every implementation of `IExampleDataAccess`. These are the rules the interfaces state. |
-| `Characterization` | 2 | This implementation only. Another DAL may legitimately fail them. |
+| `Characterization` | 4 | This implementation only. Another DAL may legitimately fail them. |
 | `Dispatcher` | 20 | Nobody's DAL. They pin the reflection convention in `ProphetsWay.BaseDataAccess` itself. |
 
-**The honest answer to "will all 160 of these pass against my implementation?" is: all but two, and here is
-exactly which two.**
+**The honest answer to "will all 162 of these pass against my implementation?" is: all but four, and here is
+exactly which four.**
 
 - `CompanyDaoTests.ShouldGetCustomCompanyFunction` — `ICompanyDao.GetCustomCompanyFunction(int)` stands in
   for whatever query your domain adds beyond the surface it inherits, and the interface deliberately says
@@ -149,12 +149,22 @@ exactly which two.**
 - `DataAccessTransactionTests.ShouldExposeUncommittedWritesToAnotherInstance` — pins `READ UNCOMMITTED`, the
   isolation this in-memory store does not provide. `IBaseDataAccess` specifies no isolation level, so a DAL
   that gets isolation from a real database **fails this test correctly**.
+- `UserDaoTests.ShouldGetCustomFunctionality` — asserts the literal this implementation stamps onto
+  `User.Whatever`. `IUserDao`'s `<remarks>` decline in as many words to say what `CustomUserFunctionality`
+  does or what it writes back, so an implementation that wrote nothing, or wrote something else, is equally
+  conforming. Its sibling `ShouldCallCustomUserFunctionality` is the `Contract` half: the member exists and
+  can be called.
+- `SnapshotDeepCopyTests.ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt` — requires
+  an edit made through `User.Company` to read back through that navigation property while the `Companies` row
+  still carries the old name. Only a store that denormalizes can do both at once; a normalized relational
+  store holds one row and reads it back through a join. Its sibling
+  `ShouldRestoreANavigationPropertyEditedInsideARolledBackTransaction` is the `Contract` half.
 
 The `Dispatcher` tests live in `ConventionShowcase/` and construct their own deliberately mis-wired DALs.
 They never touch the factory, so swapping the suite onto another implementation must leave them exactly as
 they are — they are tests to read, not a target to hit.
 
-That split is the point. A suite claiming total portability would be hiding the two places a different
+That split is the point. A suite claiming total portability would be hiding the four places a different
 implementation is allowed to differ, and hiding them is how a paradigm gets found out.
 
 ---
@@ -210,8 +220,8 @@ VS Code and the .NET CLI all handle it. See
 
 #### ProphetsWay.Example.Tests
 
-The most useful part of the repository. xUnit and Shouldly, 160 tests, run on two legs — `net48` and
-`net10.0` — for **320 executions**. By default they run against the in-memory implementation, but every test
+The most useful part of the repository. xUnit and Shouldly, 162 tests, run on two legs — `net48` and
+`net10.0` — for **324 executions**. By default they run against the in-memory implementation, but every test
 class takes its DAL from `TestDataAccessFactory.Create` — point that one method at any class implementing
 `IExampleDataAccess`, backed by anything you like, and the suite tests your implementation instead. Every
 test carries a `Scope` trait, so you can run only the ones your implementation is bound by.
@@ -614,8 +624,8 @@ dotnet test
 ```
 
 The whole solution — database project included — builds with the .NET CLI. No database server is required
-to run the tests: they use the in-memory implementation by default. Expect 160 tests on each of `net48` and
-`net10.0` — **320 executed cases**.
+to run the tests: they use the in-memory implementation by default. Expect 162 tests on each of `net48` and
+`net10.0` — **324 executed cases**.
 
 Every test carries a `Scope` trait, so you can run a subset:
 

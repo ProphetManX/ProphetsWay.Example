@@ -301,8 +301,13 @@ As of **3.0.0** it is also an **executable specification**: `IExampleDataAccess`
 DAL-wide contract rules in its `<remarks>`, and the test suite is partitioned by a `Scope` trait so
 a newly written DAL can run the subset it is actually bound by.
 
-**3.1.0 is a retarget plus documentation release.** No `.cs` file changed in it; the suite is
-byte-identical to 3.0.0's, which is precisely what makes its passing the evidence for the retarget.
+**3.1.0 is a retarget plus documentation release.** No `.cs` file changed **in the release**, and the
+suite it shipped is byte-identical to 3.0.0's — which is precisely what makes its passing the evidence
+for the retarget. **That is a fact about v3.1.0 as shipped, not about the working tree.** Two test
+files have changed since it shipped — `SnapshotDeepCopyTests.cs` and `UserDaoTests.cs`, retraited and
+split on 2026-08-16 — so the tree now carries 162 tests where 3.1.0 shipped 160. Do not repeat the
+byte-identical claim against the current tree, and do not restate the released 3.1.0 as anything other
+than what it was.
 
 ### Documents
 
@@ -310,7 +315,7 @@ byte-identical to 3.0.0's, which is precisely what makes its passing the evidenc
 |---|---|---|
 | [docs/repo-profile.md](docs/repo-profile.md) | `Repo Analyst` | The evidence base — inventory, API surface, TFMs, packaging audit, README accuracy |
 | [docs/purpose-and-scope.md](docs/purpose-and-scope.md) | `Purpose Refiner` | What this repo is for, and the scope bar everything is judged against |
-| [docs/feature-requests.md](docs/feature-requests.md) | `Purpose Refiner` triages; anyone may append | Entries 1–8 — the durable record of what was considered and deliberately not built |
+| [docs/feature-requests.md](docs/feature-requests.md) | `Purpose Refiner` triages; anyone may append | Entries 1–12 — the durable record of what was considered and deliberately not built |
 
 Numbering in `feature-requests.md` is **per-repository, starting at 1**, and does not correspond to
 the index of the same name in `ProphetsWay.BaseDataAccess`.
@@ -328,7 +333,7 @@ so its EF implementation has not yet met the 3.x contracts. See deviation 1 belo
 the claim unqualified in prose meant for a reader.
 
 `ProphetsWay.Example.Tests/TestDataAccessFactory.cs` is the **only** file in the suite that names a
-concrete implementation. Changing the single `return` in `Create` repoints all 160 tests. Do not
+concrete implementation. Changing the single `return` in `Create` repoints all 162 tests. Do not
 introduce a second construction site — doing so silently destroys the property this repo exists to
 demonstrate.
 
@@ -339,7 +344,7 @@ demonstrate.
 | `ProphetsWay.Example.DataAccess/` | Domain — `Entities/`, `IDaos/`, `Enums/`, `IExampleDataAccess` |
 | `ProphetsWay.Example.DataAccess.NoDB/` | In-memory DAL implementation (`DataStore`, `StoreTable`, `StoreList`, `TransactionLog`, `Daos/`) |
 | `ProphetsWay.Example.Database/` | SQL database project — SDK-style `Microsoft.Build.Sql/2.2.0` |
-| `ProphetsWay.Example.Tests/` | xUnit + Shouldly, 160 tests written against the interfaces, not an implementation |
+| `ProphetsWay.Example.Tests/` | xUnit + Shouldly, 162 tests written against the interfaces, not an implementation |
 
 TFMs as of **3.1.0** are `netstandard2.0;net10.0` for both DAL projects and `net48;net10.0` for the
 tests — the current house standard, in canonical dotted form. `ProphetsWay.BaseDataAccess` reached the
@@ -352,7 +357,7 @@ leg exists to verify .NET Framework *behavior*: `Activator.CreateInstance<T>()` 
 constructor there and does not on .NET Core, which is what the `ConventionShowcase`
 exception-passthrough guard pins. Do not report the split as drift.
 
-The suite runs 160 tests on each leg — **320 executions**. `ProphetsWay.BaseDataAccess` is consumed as
+The suite runs 162 tests on each leg — **324 executions**. `ProphetsWay.BaseDataAccess` is consumed as
 a NuGet `PackageReference` at **3.1.0**, never as a project reference.
 
 ### Domain Model
@@ -395,11 +400,32 @@ source of truth; this is an index, not a restatement.
   disposing a DAL no more empties the database than closing one connection does. Every test in the
   suite disposes an instance, so a store-clearing `Dispose` would delete rows out from under
   concurrently running tests.
-- **The `Scope` trait partition is load-bearing**, and every test carries one:
-  `Contract` (138) is what any conforming implementation must pass; `Characterization` (2) pins
-  choices this implementation made that the contract does not require; `Dispatcher` (20) exercises
-  the reflection convention in `ProphetsWay.BaseDataAccess` itself and belongs to no DAL. Adding a
-  test without a trait breaks `dotnet test --filter "Scope=Contract"` as a usable gate.
+- **The `Scope` trait partition is load-bearing**, and every test still carries exactly one — verified
+  by static count of every `[Fact]`, `[Theory]`, `[InlineData]` and `[Trait("Scope", …)]` in the test
+  project on 2026-08-16. `Contract` (138) is what any conforming implementation must pass;
+  `Characterization` (4) pins choices this implementation made that the contract does not require;
+  `Dispatcher` (20) exercises the reflection convention in `ProphetsWay.BaseDataAccess` itself and
+  belongs to no DAL. **They sum to the suite total, 162, and that sum is the check** — a mismatch
+  means a test is untraited or double-traited, which is the defect the partition exists to prevent.
+  Adding a test without a trait breaks `dotnet test --filter "Scope=Contract"` as a usable gate.
+- **Four classes declare `Scope` per method rather than per class** — `CompanyDaoTests`,
+  `DataAccessTransactionTests`, `SnapshotDeepCopyTests`, `UserDaoTests`. Each mixes scopes, and
+  **xUnit accumulates traits rather than letting a method override its class**, so a class-level
+  `Contract` on any of them would leave its `Characterization` test selected by
+  `--filter "Scope=Contract"` no matter what the method declared. Never put a class-level `Scope` on
+  a class with mixed scopes.
+- **A `Scope=Contract` assertion must trace to a stated rule.** If no interface, XML `<remarks>`, or
+  numbered DAO rule states the behavior being asserted, the assertion is `Characterization`, not
+  `Contract`. `--filter "Scope=Contract"` is offered as *the* conformance gate, so every `Contract`
+  assertion is an obligation placed on every future implementer; making one in the name of a
+  specification that does not make it is this repo failing at its stated job. Two were found and
+  retraited on 2026-08-16 — one requiring a row shape only a denormalizing store can produce, one
+  pinning a `private const` of the in-memory implementation. **There is no enforcement mechanism**:
+  no analyzer, no `.editorconfig` rule, no CI check on test metadata. It is a review convention that
+  holds only because whoever writes a `Contract` test asks the question, and it is a filter rather
+  than a proof — it catches an assertion nothing states, not an assertion that over-reads something
+  real. Reasoning and limits:
+  [FR 12](docs/feature-requests.md#12--a-traceability-rule-for-contract-scoped-assertions).
 - **The `ConventionShowcase/` DALs are deliberately mis-wired.** They are the subject under test,
   not the implementation under test, and they construct themselves rather than using the factory.
   Do not "fix" them.
@@ -448,14 +474,18 @@ and were factually wrong**; do not reinstate them.
 When writing this repo's README, the reader is someone evaluating whether the BaseDataAccess
 paradigm is worth adopting. Lead with the swap-the-DAL demonstration, not with a project listing.
 
-Three things the current README needs, none of them applied yet — `README Author` owns that file:
+**All three things this section previously listed as outstanding in the README have since landed** —
+re-verified by opening `README.md` on 2026-08-16, not inherited:
 
-- An onboarding note that Visual Studio cannot load the SDK-style database project, and what to do
-  about it ([FR 7](docs/feature-requests.md)).
-- A correction to the claim that EFTools runs the same suite unchanged — it is pending on EFTools
-  advancing its submodule pointer, not wrong forever.
-- Its stale build facts: it still says the projects target `net8.0`/`net9.0` and reference
-  `ProphetsWay.BaseDataAccess` 3.0.0, and that the suite runs on three legs. See the README accuracy
-  table in [docs/repo-profile.md](docs/repo-profile.md).
+- The Visual Studio note is present: the README says VS 2022/2026 cannot open an SDK-style `.sqlproj`
+  and points at *Building & Testing Locally*. [FR 7](docs/feature-requests.md) is still filed
+  `Proposed`; only `Purpose Refiner` may close it.
+- The EFTools claim is now stated **with** its qualification — the submodule pointer is named as
+  pinned at the 3.0.0 branch point, so the claim reads as pending rather than unconditional.
+- The build facts are current: `netstandard2.0`/`net10.0` for the DAL projects, `net48`/`net10.0` for
+  the tests, a `ProphetsWay.BaseDataAccess` **3.1.0** reference, two legs, and **162 tests / 324
+  executions**.
 
-`CHANGELOG.md` has no v3.1.0 entry yet; that belongs to `Changelog Author`.
+`CHANGELOG.md` has no v3.1.0 entry yet; that belongs to `Changelog Author`. It must **not** be
+back-edited for the trait counts — the 138 / 2 / 20 figure under its `v3.0.0` heading was accurate at
+that release.

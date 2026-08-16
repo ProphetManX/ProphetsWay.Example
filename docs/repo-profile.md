@@ -1,7 +1,8 @@
 # Repo Profile — ProphetsWay.Example
 
 _Generated 2026-08-15, against the working tree at **v3.1.0**, immediately after the `Modernizer`
-retarget pass and the `Purpose Refiner` pass. Evidence-based; every claim cites a source file._
+retarget pass and the `Purpose Refiner` pass. **Amended 2026-08-16** for the two `Scope` retraits and
+a re-check of the README. Evidence-based; every claim cites a source file._
 
 > **Supersedes the 2026-08-12 edition**, which profiled the `3.0.0-feature-update` branch at commit
 > `122dc69` and cited CI build `3.0.0.486` on PR #19. That branch is merged and that evidence
@@ -15,7 +16,7 @@ retarget pass and the `Purpose Refiner` pass. Evidence-based; every claim cites 
 | `ProphetsWay.Example.DataAccess.NoDB` | `netstandard2.0;net10.0` | [csproj](../ProphetsWay.Example.DataAccess.NoDB/ProphetsWay.Example.DataAccess.NoDB.csproj#L4) |
 | `ProphetsWay.Example.Tests` | `net48;net10.0` | [csproj](../ProphetsWay.Example.Tests/ProphetsWay.Example.Tests.csproj#L4) |
 | `ProphetsWay.BaseDataAccess` reference | **3.1.0** (NuGet `PackageReference`) | [csproj](../ProphetsWay.Example.DataAccess/ProphetsWay.Example.DataAccess.csproj#L29) |
-| Suite | 160 tests × 2 legs = **320 executions**, green | `Modernizer` run, 2026-08-15 |
+| Suite | 162 tests × 2 legs = **324 executions** | Static count, 2026-08-16 — see below |
 | Version | 3.1.0, set by hand | [app-variables.yml](../app-variables.yml#L3) |
 
 ---
@@ -25,6 +26,13 @@ retarget pass and the `Purpose Refiner` pass. Evidence-based; every claim cites 
 **The solution builds and the full suite passes on both legs.** The evidence is the local
 `Modernizer` verification run of 2026-08-15, which built and tested `net48` and `net10.0`
 independently and confirmed 160 tests on each — **320 executions total**.
+
+**That run predates the tree.** Two test classes were retraited and split on 2026-08-16 —
+[SnapshotDeepCopyTests.cs](../ProphetsWay.Example.Tests/SnapshotDeepCopyTests.cs) and
+[UserDaoTests.cs](../ProphetsWay.Example.Tests/UserDaoTests.cs) — each keeping a `Contract` assertion
+and moving an over-claiming one into a new `Characterization` sibling. The suite is therefore **162
+tests, 324 executions** today. No green run has been recorded against that tree; the count below is a
+static one and is labelled as such.
 
 **This analyst pass did not itself run a build.** No claim below rests on a build I performed; where
 the evidence is the `Modernizer` run it says so. There is **no CI build for 3.1.0 yet** — the last
@@ -38,8 +46,8 @@ superseded.
 | TFM lists | Read all three `.csproj` | Match the table above |
 | BaseDataAccess version | Read the single `PackageReference` | `3.1.0` |
 | `<NullableContextOptions>` | Repo-wide search | **Absent from every `.csproj`** — the property is gone |
-| `Scope` trait partition | Static count of class- and method-level `[Trait("Scope", …)]` | **138 Contract / 2 Characterization / 20 Dispatcher**, unchanged |
-| Untagged tests | Cross-check of class-level vs. method-level traits | **None** — every test carries a `Scope` |
+| `Scope` trait partition | Static count of class- and method-level `[Trait("Scope", …)]` against `[Fact]` / `[Theory]` / `[InlineData]` | **138 Contract / 4 Characterization / 20 Dispatcher** — sums to 162, the suite total |
+| Untagged tests | Cross-check of class-level vs. method-level traits, test method by test method | **None** — every test carries exactly one `Scope`. Four classes now declare it per method: `CompanyDaoTests`, `DataAccessTransactionTests`, `SnapshotDeepCopyTests`, `UserDaoTests` |
 | Single construction site | Repo-wide search for `new ExampleDataAccess()` outside `ConventionShowcase/` | **One**, in [TestDataAccessFactory.Create](../ProphetsWay.Example.Tests/TestDataAccessFactory.cs#L38) |
 
 ### The `net48` test leg is now doing something it was not doing before
@@ -60,7 +68,7 @@ dotnet test  ProphetsWay.Example.sln -c Release
 dotnet test  ProphetsWay.Example.sln --filter "Scope=Contract"
 ```
 
-Expect 160 tests on each of `net48` and `net10.0` — **320 executed test cases total**. The solution
+Expect 162 tests on each of `net48` and `net10.0` — **324 executed test cases total**. The solution
 includes the `.sqlproj`, so `dotnet build` also exercises the SDK-style database project.
 
 ### Warnings
@@ -77,7 +85,7 @@ retarget, which introduced no new warnings. Cosmetic; making them `internal` wou
 ## One-Line Purpose
 
 The reference implementation and executable specification for the `ProphetsWay.BaseDataAccess`
-paradigm — a worked domain, one in-memory DAL, and a 160-test suite written against interfaces so
+paradigm — a worked domain, one in-memory DAL, and a 162-test suite written against interfaces so
 that pointing it at a different DAL is a one-line change.
 
 ## What It Actually Does
@@ -104,9 +112,11 @@ are written with an explanation of *why an in-memory store satisfies them incide
 Server does not*, which is precisely the class of divergence that would falsify the repo's central
 claim.
 
-**v3.1.0 changed no `.cs` file.** It is a retarget plus documentation release; the suite is
-byte-identical to 3.0.0's, and that is deliberately what makes its passing the evidence for the
-retarget.
+**v3.1.0 changed no `.cs` file.** It is a retarget plus documentation release; the suite **it shipped**
+is byte-identical to 3.0.0's, and that is deliberately what makes its passing the evidence for the
+retarget. **The working tree has since moved on** — two test files were retraited and split on
+2026-08-16, taking the suite from 160 tests to 162 — so the byte-identical claim describes v3.1.0 as
+released and must not be restated about the current tree.
 
 ## Projects in the Solution
 
@@ -117,7 +127,7 @@ Source: [ProphetsWay.Example.sln](../ProphetsWay.Example.sln)
 | `ProphetsWay.Example.DataAccess` | Library | Contracts — `Entities/`, `IDaos/`, `Enums/`, `IExampleDataAccess` |
 | `ProphetsWay.Example.DataAccess.NoDB` | Library | In-memory DAL implementation |
 | `ProphetsWay.Example.Database` | `.sqlproj` | SQL Server schema + post-deploy seed scripts |
-| `ProphetsWay.Example.Tests` | xUnit | 160 tests written against the interfaces |
+| `ProphetsWay.Example.Tests` | xUnit | 162 tests written against the interfaces |
 
 No project references flow the wrong way: `.NoDB` → `.DataAccess`, `.Tests` → both. The contracts
 project references no implementation.
@@ -321,22 +331,23 @@ in the workspace — idempotent, non-throwing, rolls back rather than commits, a
 
 ## README Accuracy Check
 
-`README.md` is owned by `README Author` and was **not** touched in this pass. These are the
-discrepancies a later phase inherits. The document is otherwise in better shape than most released
-libraries.
+`README.md` is owned by `README Author`. **The four rows this table carried as STALE have since been
+fixed in the README and are re-verified as accurate below** — the file now states `netstandard2.0` /
+`net10.0`, two test legs, a `3.1.0` reference, and the EFTools claim qualified by the pinned submodule
+pointer. The count row was corrected on 2026-08-16 by the same pass that corrected this document.
 
 | Existing claim | Verdict | Evidence |
 |---|---|---|
-| "138 Contract / 2 Characterization / 20 Dispatcher" | **Accurate** | Static trait count reproduces all three exactly |
+| **"138 Contract / 2 Characterization / 20 Dispatcher"** ([README.md#L137](../README.md#L137)) | **WAS STALE — corrected 2026-08-16** | Accurate when written. The two retraits make it **138 / 4 / 20 of 162**; the README table and its "all but two" list were updated in the same pass |
 | "`TestDataAccessFactory.Create` is the only place `new ExampleDataAccess()` appears" | **Accurate** | Single match repo-wide |
 | "`IDepartmentDao` carries 19 numbered rules; `ICompanyResourceDao` carries 10" | **Accurate** | Both files carry the numbered rule sets |
 | "`TransactionStart` throws `InvalidOperationException`…" | **Accurate** | [TransactionLog.cs#L50](../ProphetsWay.Example.DataAccess.NoDB/TransactionLog.cs#L50) |
 | "Every other member throws `ObjectDisposedException` once disposed" | **Accurate** | `ThrowIfDisposed()` on every delegating member |
 | "`ProphetsWay.BaseDataAccess` 3.0.0 removed the `TargetInvocationException` wrapper" | **Accurate** | Asserted directly in `ExceptionPassthroughShowcaseTests`; a statement about 3.0.0's history, still true at 3.1.0 |
-| **"160 tests, run across `net48`, `net8.0` and `net9.0`"** ([README.md#L190](../README.md#L190)) | **STALE** | `net48;net10.0` — two legs, 320 executions |
-| **"the two data access layer projects build for `netstandard2.0`, `net48`, `net8.0` and `net9.0`; the test project runs on `net48`, `net8.0` and `net9.0`"** ([README.md#L216](../README.md#L216)) | **STALE** | `netstandard2.0;net10.0` and `net48;net10.0` |
-| **"The solution references the released `ProphetsWay.BaseDataAccess` 3.0.0"** ([README.md#L218](../README.md#L218)) | **STALE** | `3.1.0` |
-| **"`ProphetsWay.EFTools` carries an Entity Framework implementation of the very same `IExampleDataAccess` contract, and the tests do not change to accommodate it."** | **STALE — currently false** | EFTools consumes this repo as a **submodule** ([.gitmodules](../../ProphetsWay.EFTools/.gitmodules)) pinned at `967fd26`, **pre-3.0.0**. Its `ProphetsWay.Example.DataAccess.EF` implements a contract that no longer exists — no `Dispose`, no `Department`, no `CompanyResource`, no snapshot rule. See [FR 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) |
+| Test-suite size and legs | **WAS STALE — corrected** | The README now says two legs, `net48` and `net10.0`, and was updated to **162 tests / 324 executions** on 2026-08-16 |
+| Data access layer and test project target frameworks | **Accurate** | README now states `netstandard2.0` / `net10.0` for the two DAL projects and `net48` / `net10.0` for the tests — matches all three `.csproj` |
+| `ProphetsWay.BaseDataAccess` reference version | **Accurate** | README now says **3.1.0**; matches the single `PackageReference` |
+| **"`ProphetsWay.EFTools` carries an Entity Framework implementation of the very same `IExampleDataAccess` contract, and the tests do not change to accommodate it."** | **Now qualified — accurate as written** | The README states the pointer is pinned at `967fd26`, the 3.0.0 branch point, and that the EF implementation is on the pre-3.0.0 contract. The underlying coordination gap is unchanged: [FR 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) |
 | Badge points at `branchName=main` | **Correct** | 3.0.0 is merged; the badge now reflects this tree |
 
 `CHANGELOG.md` has **no v3.1.0 entry** — its most recent heading is `v3.0.0`. That file belongs to
