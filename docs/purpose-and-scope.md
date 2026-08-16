@@ -80,8 +80,9 @@ in better shape than most released libraries' READMEs.
 
 Unusually for this workspace, **there is no drift between stated and real purpose.** The README, the
 `<remarks>` on [IExampleDataAccess](../ProphetsWay.Example.DataAccess/IExampleDataAccess.cs), and the code all
-say the same thing. The three findings below are drift of a different kind — between the documentation and the
-current state of the tree, and between the headline claim and the state of a sibling repository.
+say the same thing. The four findings below are drift of a different kind — between the documentation and the
+current state of the tree, between the specification and what the suite actually demands, and between the
+headline claim and the state of a sibling repository.
 
 1. **The README's central claim is currently false in practice, through no fault of this repository.**
    "`ProphetsWay.EFTools` carries an Entity Framework implementation of the very same `IExampleDataAccess`
@@ -103,6 +104,21 @@ current state of the tree, and between the headline claim and the state of a sib
    `AGENTS.md` and [docs/repo-profile.md](repo-profile.md) carried the same drift and were corrected during
    3.1.0 — see [Stale Claims — Corrected in 3.1.0](#stale-claims--corrected-in-310) and the
    [Still Open](#still-open--owned-by-other-agents) table beneath it.
+
+4. **The `Contract` scope over-claimed, in two places, and one of them is still uncorrected.** Two assertions
+   were marked `Scope=Contract` — binding every conforming DAL — while actually encoding choices of the
+   in-memory store: one requiring a row shape only a denormalized store can produce, one pinning a string
+   literal that `IUserDao`'s `<remarks>` explicitly declines to specify. Since
+   `dotnet test --filter "Scope=Contract"` is offered as *the* conformance gate, an over-claiming `Contract`
+   scope is the repository failing at its stated job, and it is the sharpest drift on this list. The first is
+   retraited; the second is authorized and outstanding. Captured with the full reasoning — and with the
+   decision that `.NoDB` stays — as
+   [feature request 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays).
+
+   **Both were found by someone attempting a second implementation with different physical constraints**, which
+   is the argument for [FR 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts)
+   being worth more than its face value: advancing the EFTools submodule pointer is also this repository's audit
+   of its own `Contract` scope, and it should be expected to find more.
 
 ---
 
@@ -167,14 +183,22 @@ in the contracts project's public surface fails the scope gate automatically.
 - The seven-entity domain, its DAO interfaces, and `IExampleDataAccess`, held at a size a reader can carry.
 - Exactly **one** in-memory implementation in this repository. The second implementation lives in EFTools by
   design — the argument requires two implementations in *different* repositories with *different* storage, not
-  two in this one.
+  two in this one. **Settled 2026-08-15**, against a proposal to add or relocate a second one here:
+  [FR 10](feature-requests.md#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one).
+- **`ProphetsWay.Example.DataAccess.NoDB` specifically**, and not a SQLite-backed replacement for it. A
+  dictionary versus a relational engine is the radical difference the claim rests on; two relational engines is
+  a configuration change. Recorded with its reasoning in
+  [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays).
 - The behavioural specifications in XML `<remarks>` — the snapshot rule and ordering rule on
   `IExampleDataAccess`, the 19 numbered rules on `IDepartmentDao`, the 10 on `ICompanyResourceDao`. These are
   the executable specification, and they are the source of truth for behaviour; prose elsewhere indexes them
   and must not restate them.
-- The `Scope` trait partition — `Contract` (138) / `Characterization` (2) / `Dispatcher` (20) — and the
-  honesty it enforces. A suite claiming total portability would be hiding the two places a conforming
-  implementation is allowed to differ.
+- The `Scope` trait partition — `Contract` / `Characterization` / `Dispatcher` — and the honesty it enforces. A
+  suite claiming total portability would be hiding the places a conforming implementation is allowed to differ.
+  **The split is currently 137 / 3 / 20 of 160**, verified against the tree on 2026-08-15; it was 138 / 2 / 20
+  until a mis-scoped assertion was retraited this session, and becomes 136 / 4 / 20 when the second retrait
+  lands. Earlier documents quoting 138 / 2 / 20 are stale, not wrong at the time — see
+  [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays).
 - `ConventionShowcase/` as the home for base-library behaviours that a reader benefits from seeing but that
   the domain should not carry.
 - The SQL database project, as the schema a database-backed implementation of these contracts would target.
@@ -183,7 +207,7 @@ in the contracts project's public surface fails the scope gate automatically.
 
 | Not this repository's job | Where it belongs |
 | --- | --- |
-| A second in-repo DAL implementation (MSSQL, Dapper, …) | Its own repository consuming this one, exactly as `ProphetsWay.EFTools` does. Two implementations side by side here would make the swap look like a local convenience rather than a cross-repository property |
+| A second in-repo DAL implementation (MSSQL, Dapper, …) | Its own repository consuming this one, exactly as `ProphetsWay.EFTools` does. Two implementations side by side here would make the swap look like a local convenience rather than a cross-repository property. **Asked and answered in four variants — including replacing `.NoDB` with SQLite and relocating `ProphetsWay.Example.DataAccess.EF` into this repository — all Rejected: [FR 10](feature-requests.md#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one)** |
 | A published, reusable conformance test kit | `ProphetsWay.BaseDataAccess` — recorded as entry 1 in [its feature-request index](../../ProphetsWay.BaseDataAccess/docs/feature-requests.md), deferred until a second real implementation exists. This suite is *shaped* like one, which is precisely why the temptation to publish it should be resisted here |
 | Rules about `IBaseDataAccess` disposal, transactions, or the reflection convention | The `<remarks>` in `ProphetsWay.BaseDataAccess`. This repository *demonstrates* them; a restatement here is a fourth copy that will drift |
 | Benchmarks, performance work, or making `DataStore` production-grade | Nowhere. `.NoDB` is a teaching store; optimizing it adds code a reader must skip |
@@ -246,6 +270,9 @@ and the status. Nothing here is applied by this document.
 | 6 | ~~Refresh the stale claims in [docs/repo-profile.md](repo-profile.md) at the next analyst pass~~ — **Done in 3.1.0** | The analyst pass that produced the current `repo-profile.md` corrected all of them; see below | Trivial | No |
 | 7 | Update `README.md` — test legs, TFMs, the `ProphetsWay.BaseDataAccess` version, and the EFTools claim | Four statements in the README are measurably false against this tree; they are enumerated in the README-accuracy table in [docs/repo-profile.md](repo-profile.md). **`README Author`'s edit to make** | Low | No |
 | 8 | Add a `v3.1.0` entry to `CHANGELOG.md` | Its most recent heading is `v3.0.0`; the retarget is a shipped, consumer-visible change. **`Changelog Author`'s edit to make** | Low | No |
+| 9 | Retrait `UserDaoTests.ShouldGetCustomFunctionality` off `Contract` — [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | It demands of every implementer a literal that `IUserDao`'s `<remarks>` explicitly declines to specify, inside the filter offered as the conformance gate. Needs the class-level trait split across its five `[Fact]`s, because xUnit accumulates traits. **`Test Designer`'s edit to make** | Low | No — it removes an obligation |
+| 10 | Adopt the traceability rule for `Contract`-scoped assertions — [FR 12](feature-requests.md#12--a-traceability-rule-for-contract-scoped-assertions) | An assertion wrongly in `Contract` is a demand made in the name of a specification that does not make it; the rule costs a sentence and would have caught one of the two mis-scopes on sight | Trivial | No |
+| 11 | Correct the `Scope` trait counts wherever they are quoted | [README.md](../README.md) line 137, `AGENTS.md` line 399 and [repo-profile.md](repo-profile.md) lines 41 and 330 all still say `Contract` 138 / `Characterization` 2 / `Dispatcher` 20. It is 137 / 3 / 20 today and 136 / 4 / 20 after refinement 9. **Each file is its own owner's.** `CHANGELOG.md` line 80 carries the same figure and must **not** be corrected — it sits under the `v3.0.0` heading, where 138 was accurate; editing a shipped release's notes to match a later tree is falsifying history, not fixing a typo | Trivial | No |
 
 **Explicitly not recommended:** enabling `<Nullable>enable</Nullable>`. The projects multi-target
 `netstandard2.0`, which caps shared code at C# 7.3, so nullable reference types cannot work here regardless of

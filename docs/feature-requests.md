@@ -35,6 +35,9 @@ them, because duplicated rules drift.
 | 7 | [A Visual Studio onboarding note in the README](#7--a-visual-studio-onboarding-note-in-the-readme) | **Proposed** — trivial, high leverage |
 | 8 | [Selecting the implementation from configuration instead of a code edit](#8--selecting-the-implementation-from-configuration-instead-of-a-code-edit) | **Rejected** — decided in code comments already |
 | 9 | [Seed data for `Resources`, `Departments` and `CompanyResources`](#9--seed-data-for-resources-departments-and-companyresources) | **Deferred** — revisit with [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) |
+| 10 | [A second Data Access Layer implementation in this repository — SQLite, MSSQL, or relocating the Entity Framework one](#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one) | **Rejected** — all four variants, including replacing `.NoDB` |
+| 11 | [The two mis-scoped `Contract` assertions, and why `.NoDB` stays](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | **Scheduled** — one half landed, one half outstanding |
+| 12 | [A traceability rule for `Contract`-scoped assertions](#12--a-traceability-rule-for-contract-scoped-assertions) | **Proposed** — the cheap control that would have caught mis-scope 2 |
 
 Numbers are permanent. Entries are never renumbered and never removed —
 [purpose-and-scope.md](purpose-and-scope.md) cites entries by number, and a rejected entry is decision history
@@ -82,10 +85,18 @@ in this folder. No contract, entity, Data Access Object interface, or test chang
 | 7 | Proposed | Technically yes — **but no** | README-only and non-breaking, so a documentation release is the right home for it. Left out because the README is `README Author`'s file and no pass has run |
 | 8 | Rejected | n/a | Decided against |
 | 9 | Deferred | **No** | Nothing to land, and the deployed database is not exercised by any test in this repository |
+| 10 | Rejected | n/a | Decided against, in all four variants |
+| 11 | Scheduled | **No — it is post-v3.1.0 work** | The `SnapshotDeepCopyTests` half is already applied to the working tree, which means **the tree no longer matches the suite v3.1.0 shipped**. It belongs to the next release, not retroactively to this one |
+| 12 | Proposed | **No** | A review convention, not a change to any file that v3.1.0 touched |
 
 **The honest answer is none, apart from entry 6** — which changed one attribute value in a publish profile and
 no test at all. That is the correct outcome for a release whose evidence is "the same 160 tests still pass";
 changing a test would have removed the evidence.
+
+**Note for the next release, from [entry 11](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays):**
+the trait retrait applied this session means the phrase "no `.cs` file changed" is true of **v3.1.0 as shipped**
+and is **no longer true of the working tree**. The next release's notes must say so; repeating v3.1.0's
+byte-identical claim against the current tree would be false.
 
 ---
 
@@ -461,4 +472,283 @@ When [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) 
 there is an implementation that reads these tables, the seed rows can be shaped by what it needs, and the two
 can be verified together. Reopen this then, and seed all three tables in one pass — the purge order is already
 written down.
+
+---
+
+## 10 — A second Data Access Layer implementation in this repository — SQLite, MSSQL, or relocating the Entity Framework one
+
+**Status:** **Rejected**, in all four variants that were put. Not deferred, and not "not yet" — the reasoning
+below is structural rather than a matter of timing, so a future proposal has to defeat the argument rather than
+wait for the budget.
+
+This entry answers a question the owner asked directly, together with three variants of it that the question
+turned out to contain. It exists so that the answer is not re-derived, and so that the *reason* — which is the
+durable part — survives the question.
+
+### How it arose
+
+During a `ProphetsWay.EFTools` 3.x design pass, two assertions in this suite were found to be marked
+`Scope=Contract` while actually encoding choices of the in-memory store. They are recorded separately as
+[entry 11](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays). The immediate reaction to finding
+them was to wonder whether `ProphetsWay.Example.DataAccess.NoDB` should be swapped for a SQLite-backed store,
+"since we've had a few quirks shake out because of the fake db instance all being in memory" — and from there,
+whether SQLite should be a second implementation and SQL Server a third.
+
+### First, a distinction that has to be resolved before the question can be answered
+
+**"SQLite second, MSSQL third" conflates two implementations with one implementation on two providers.**
+
+`ProphetsWay.EFTools`'s approved 3.x plan — owner decision **D4**, recorded in
+[that repository's purpose-and-scope.md](../../ProphetsWay.EFTools/docs/purpose-and-scope.md#owner-decisions--2026-08-15)
+— certifies its **single** EF Core implementation on **two provider legs**: SQLite in-memory as the fast
+continuous-integration gate, and a SQL Server container for provider fidelity. **D2** and **D8** in the same
+table make the same split explicit at the level of public wording: relational providers generally are in scope,
+SQLite and SQL Server are *certified*.
+
+So SQLite and SQL Server are already accounted for, and they are accounted for as **configuration of one Data
+Access Layer**, in a different repository, on that repository's version line. Nothing in this repository has to
+be built to obtain them, and building something here would not add a third implementation — it would add a
+second *copy* of a story already told.
+
+Once that is separated out, the real options are the four below.
+
+### The options, and the verdict on each
+
+| Option | Verdict |
+| --- | --- |
+| **A. Status quo** — `.NoDB` here, `.EF` in `ProphetsWay.EFTools`, EF certified on SQLite and SQL Server | **Accepted.** Zero new work, and it is already the strongest available form of the argument |
+| **B. Replace `.NoDB` with a SQLite-backed implementation** | **Rejected.** It would destroy the argument, not improve it — see below |
+| **C. Move or mirror `ProphetsWay.Example.DataAccess.EF` into this repository** | **Rejected.** The two implementations being in *different repositories* is the property, not an accident of layout |
+| **D. A hand-written ADO.NET `ProphetsWay.Example.DataAccess.MSSQL`, bypassing Entity Framework** | **Rejected.** The strongest version of the argument on paper, and the one whose cost is most disproportionate to what it adds |
+
+### B — why replacing `.NoDB` is the worst of the four
+
+**`.NoDB` is not a fake database. It is the argument.**
+
+The claim this repository makes is that the same suite passes against *radically* different storage. A
+`Dictionary<int, T>` with a hand-rolled undo log versus a relational engine is radical. Two relational engines
+is a configuration change. Swapping `.NoDB` for SQLite would leave the repository demonstrating that a
+relational store behaves like a relational store — which nobody doubted, and which is not what
+`ProphetsWay.BaseDataAccess` claims.
+
+**And the premise of the swap is backwards.** The two mis-scopes were not `.NoDB` failing. They were `.NoDB`
+*working*: it satisfied assertions that a normalized store physically cannot, and by satisfying them it exposed
+that the assertions were specifying the wrong thing. That defect is only visible from a store whose physical
+constraints differ from the specification's assumptions. **A second relational store would never have surfaced
+it** — it would have agreed with the first one and the mis-scope would have survived undetected, wearing a
+green tick. `.NoDB` earned its place by being the thing that disagreed.
+
+The owner reached this conclusion independently and it is accepted here without qualification. It is recorded
+in [entry 11](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) as the durable part.
+
+### C — why consolidating the Entity Framework implementation here is rejected
+
+This is the most tempting of the four, because the objection to it sounds like mere convention: the swap
+demonstration is currently split across two repositories, and a reader has to clone a second one to see both
+halves. Consolidating looks like it buys visibility for a fraction of option D's cost.
+
+**It is rejected because the split is load-bearing.** [purpose-and-scope.md](purpose-and-scope.md#in-scope)
+already states it under **In Scope**: the argument requires two implementations in *different repositories*
+with *different storage*, not two in this one. Two implementations sitting side by side in one solution
+demonstrate that a well-factored solution can have two Data Access Layers — a much weaker and much less
+surprising claim. What makes the paradigm's claim land is that a **separately versioned, separately released,
+independently authored** implementation in another repository satisfies a suite it never saw, without the suite
+changing. Move it here and the demonstration becomes a local arrangement.
+
+There is also a concrete mechanical objection. `ProphetsWay.EFTools` consumes this repository as a **git
+submodule**. Mirroring `.EF` into this repository would create a cycle: this repository would contain a copy of
+a project that lives in a repository that contains a copy of this repository. That is the duplication problem
+[entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) explicitly records as *not* being
+the current situation, and it would be a genuine regression to introduce it.
+
+**The real complaint underneath option C is valid, and it has a cheaper answer.** If the objection is "a reader
+cannot see both halves," the fix is a README paragraph naming the second implementation, where it lives, and
+what it demonstrates — not relocating a project. That belongs to `README Author` and is already adjacent to
+[entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts), whose resolution is the precondition
+for stating the claim unqualified at all.
+
+### D — why a hand-written ADO.NET implementation is rejected despite being the best argument
+
+Judged purely as an argument, **D is the strongest of the four.** Dictionary, then an object-relational mapper,
+then raw SQL is a genuinely three-point line, and the third point is the one that most convincingly rules out
+"it only works because Entity Framework is doing something clever." That is a real gain and it should not be
+pretended otherwise.
+
+It is rejected on **cost measured in the currency this repository actually spends**, which
+[The Bar](#the-bar-everything-here-is-judged-against) names as the reader's working memory, not build time:
+
+- **A permanent third copy of seven Data Access Objects**, plus an aggregate Data Access Layer, plus
+  connection, command, mapping and transaction plumbing that exists in no other implementation here. Every
+  future contract change — every new numbered rule on `IDepartmentDao`, every entity — is then a three-place
+  edit rather than a one-place edit, forever.
+- **Continuous integration needs a real SQL Server.** `ProphetsWay.EFTools` is taking on exactly that cost
+  under [its FR 11](../../ProphetsWay.EFTools/docs/feature-requests.md), with a container leg and the retirement
+  of blanket `LocalTestsOnly`. Taking it on here too doubles that work and puts it in the one repository whose
+  virtue is that `git clone` followed by `dotnet test` is the entire onboarding.
+- **It makes the repository bigger to read at exactly the point it is already near its ceiling.** Seven entities
+  is stated as near the limit; a third full implementation is a larger addition than any entity ever proposed
+  and rejected here.
+- **Hand-written ADO.NET is the least representative thing a reader will go on to write.** The audience is
+  someone deciding whether to adopt the paradigm; almost all of them will implement it over an object-relational
+  mapper. The third point on the line is the one fewest readers need.
+
+**What would reopen it:** somebody actually building a non-Entity-Framework Data Access Layer over these
+contracts — in `ProphetsWay.BPA` or a consumer — for a reason of their own. At that point the implementation
+exists because it is wanted, and the question becomes whether to *point at* it, which is cheap. Building one
+speculatively to complete a three-point line is
+[grid completeness](#the-bar-everything-here-is-judged-against) with a larger price tag.
+
+### The cheaper alternative that was raised, and an honest verdict on it
+
+It was put that the two mis-scopes were found by **reading the contract**, not by running a second store — so a
+conformance checklist, or a deliberately hostile minimal Data Access Layer implementing the contracts as
+adversarially as possible, might catch the same class of defect for a fraction of the cost.
+
+**As a substitute for a second implementation: no. It is a consolation prize, and it fails on the specific
+defect that prompted the question.** An adversarial in-memory Data Access Layer can satisfy mis-scope 1
+trivially, by denormalizing exactly as `.NoDB` does. The assertion is only *impossible* for a store with
+normalization constraints, so no amount of hostility from another in-memory store surfaces it. What surfaced it
+was a second implementation with **different physical constraints** — which is `ProphetsWay.EFTools`, which
+already exists and is already the mechanism. The lesson is that the existing mechanism worked, not that a new
+one is needed.
+
+**As a cheap control against the *other* mis-scope: yes, and it is worth doing.** Mis-scope 2 — a
+`Contract`-scoped assertion pinning a string literal that no contract states — is catchable by a review rule
+costing nothing at all. That is split out as [entry 12](#12--a-traceability-rule-for-contract-scoped-assertions)
+rather than buried here, because it stands on its own and should not inherit this entry's rejection.
+
+### What this entry does not decide
+
+It does not touch `ProphetsWay.EFTools`'s own plan. SQLite and SQL Server as **provider legs of the Entity
+Framework implementation** are approved there under D2, D4 and D8 and are unaffected by anything above.
+Rejecting a second implementation *here* is not a comment on certifying one implementation on two providers
+*there*.
+
+---
+
+## 11 — The two mis-scoped `Contract` assertions, and why `.NoDB` stays
+
+**Status:** **Scheduled.** Half applied to the working tree, half outstanding. This is a decided matter, not an
+open bug — it is recorded so that a future reader finding either assertion does not diagnose it fresh, and does
+not re-propose replacing `.NoDB` on the strength of it.
+
+### What was wrong
+
+The `Scope` trait partition is load-bearing: `Contract` is the subset any conforming Data Access Layer must
+pass, and `dotnet test --filter "Scope=Contract"` is only a usable gate if every test in it is genuinely
+binding. Two assertions were in `Contract` and should not have been.
+
+**1 — `SnapshotDeepCopyTests.ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt`.** It
+required `Update(user)` to make `user.Company.Name` read back with the edit **while the `Companies` row keeps
+the old name**. `.NoDB` satisfies this because `UserDao.Update` writes a deep copy of the user into the Users
+table, so a user's view of a company and the Companies table are physically separate data and may legitimately
+disagree. **A normalized relational store cannot do this** — one row, one name, read back through a join — and
+an implementation that cascaded the write through the navigation property would be rewriting `Company`, `Job`
+and `Department` rows the caller never named. It is a property of the in-memory store's row shape, not
+something the SNAPSHOT RULE on `IExampleDataAccess` asks of anybody.
+
+**Applied.** The test now carries `[Trait("Scope", "Characterization")]` and `<remarks>` stating why, including
+an explicit instruction that it must not be promoted back. Note that the fix required moving `Contract` from
+the class to each method, because **xUnit accumulates traits rather than letting a method override a class** —
+a class-level `Contract` would have left the test selected by the filter no matter what the method declared.
+The class documents this.
+
+**2 — `UserDaoTests.ShouldGetCustomFunctionality`.** It asserts
+`co2.Whatever.ShouldBe("custom functionality triggered")`. That literal is a `private const
+CustomFunctionalityStamp` in `ProphetsWay.Example.DataAccess.NoDB.Daos.UserDao`, and the `<remarks>` on
+[`IUserDao`](../ProphetsWay.Example.DataAccess/IDaos/IUserDao.cs) **explicitly decline to specify** what
+`CustomUserFunctionality` does: *"states no behavior of its own, and none is implied here — what it does, and
+what if anything it writes back onto the caller's instance, is the implementation's to define."* A
+`Contract`-scoped test therefore demands of every implementer a value the contract deliberately refuses to name.
+
+**Outstanding.** `UserDaoTests` carries a single class-level `[Trait("Scope", "Contract")]` covering five
+`[Fact]`s, so the same restructure is needed: replace it with five method-level traits, four `Contract` and one
+`Characterization`, and add `<remarks>` pointing at the sentence in `IUserDao` that makes it characterization.
+The other two assertions in the method — that `Id` round-trips and that `Whatever` *changed* — are genuinely
+contractual, so an alternative shape is to keep a `Contract` test asserting only "something was written" and
+move only the literal into a `Characterization` sibling. That choice belongs to `Test Designer`; **this entry
+records that the retrait is authorized, not the wording of it.**
+
+### The counts move, and the documents that state them will go stale
+
+The partition was `Contract` 138 / `Characterization` 2 / `Dispatcher` 20. With mis-scope 1 applied it is
+**137 / 3 / 20**, verified against the tree. With mis-scope 2 applied it becomes **136 / 4 / 20**. The total
+stays 160. [`README.md`](../README.md) line 137, `AGENTS.md` line 399 and [repo-profile.md](repo-profile.md)
+lines 41 and 330 all quote the old triple; each is its own owner's to correct, and none should be corrected
+twice.
+
+**`CHANGELOG.md` line 80 quotes it too and must be left alone.** It sits under the `v3.0.0` heading, where 138
+was the true count. Correcting a shipped release's notes to match a later tree is not a fix.
+
+### The decision that matters: `.NoDB` stays
+
+The finding prompted the question of whether the in-memory store should be replaced by SQLite. **It should
+not**, and the reasoning is the durable part of this entry:
+
+> `.NoDB` is not a fake database — it is the argument. The paradigm's claim is that the same tests pass against
+> *radically* different storage; a dictionary versus a relational engine is radical, two relational engines is a
+> configuration change. And the two mis-scopes were not `.NoDB` failing. They were `.NoDB` **working** —
+> satisfying assertions a normalized store physically cannot, and thereby exposing defects in the specification
+> that a second relational store would never have surfaced.
+
+The full option analysis, including moving the Entity Framework implementation here and adding a hand-written
+ADO.NET one, is [entry 10](#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one).
+All variants are **Rejected**.
+
+### The generalisable lesson, which is why this is written down at all
+
+**A `Contract` assertion that only one implementation's physical data layout can satisfy is a specification
+defect, and it is invisible from inside that implementation.** Both mis-scopes were found the same way — by
+someone attempting a second implementation with different constraints and asking "can I satisfy this?" That is
+the detector, and it is the reason
+[entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) is worth more than its face value:
+advancing the `ProphetsWay.EFTools` submodule pointer is not only a correctness fix for that repository, it is
+**this repository's audit of its own `Contract` scope.** Expect it to find more.
+
+---
+
+## 12 — A traceability rule for `Contract`-scoped assertions
+
+**Status:** **Proposed.** Trivial, and the only control that would have caught
+[mis-scope 2](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) before an implementer hit it.
+
+### The rule
+
+> A `Scope=Contract` assertion must trace to a stated rule — a numbered rule in a Data Access Object interface's
+> `<remarks>`, one of the Data-Access-Layer-wide rules on `IExampleDataAccess`, or a documented behaviour of
+> `IBaseDataAccess`. If nothing states it, the assertion is `Characterization`.
+
+Mis-scope 2 fails this immediately and visibly: the test asserts a literal, and the interface's `<remarks>` says
+in as many words that the behaviour is unspecified. No second store, no new implementation, and no execution is
+needed to see it — only the discipline of asking the question.
+
+Mis-scope 1 **would not** have been caught by it, and that limit should be stated plainly rather than glossed:
+that assertion *did* trace to the SNAPSHOT RULE. It traced to a defensible over-reading of a real rule, which is
+a subtler failure and needs a second implementation to expose. This rule is a cheap filter, not a proof.
+
+### Why it is Proposed rather than Scheduled
+
+It is a review convention, and this repository has no mechanism that enforces conventions — no `.editorconfig`,
+no analyzer, no continuous-integration check on test metadata. The honest options are a paragraph in the
+`Scope` trait documentation where the partition is already explained, and an item in whatever review checklist
+a `Test Designer` pass follows. Both are cheap; neither is enforcement. It should not be marked `Done` on the
+strength of writing a sentence.
+
+**The cost of getting this wrong is asymmetric**, which is why it is worth a rule at all. An assertion wrongly
+in `Characterization` is a missed obligation that the next implementer simply does not have to meet. An
+assertion wrongly in `Contract` is a demand this repository makes of every implementer in the name of a
+specification that does not make it — and since `--filter "Scope=Contract"` is offered as *the* conformance
+gate, that is the repository failing at the one job it claims.
+
+### Deliberately not proposed alongside it
+
+A deliberately hostile minimal Data Access Layer, as a way of shaking out over-specified assertions
+mechanically. It was weighed under
+[entry 10](#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one)
+and rejected: an adversarial in-memory store can satisfy mis-scope 1 by denormalizing exactly as `.NoDB` does,
+so it does not catch the class of defect that prompted the question. `ConventionShowcase/` already hosts
+deliberately mis-wired Data Access Layers, and their subject is the reflection convention in
+`ProphetsWay.BaseDataAccess` — not the domain contracts. Extending them to police contract scope would give
+that folder a second, unrelated job.
+
 

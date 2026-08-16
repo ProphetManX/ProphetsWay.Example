@@ -37,9 +37,14 @@ namespace ProphetsWay.Example.Tests
 	/// it belongs to <see cref="TestCollections.SharedStore"/> along with every other class that reaches the
 	/// store. It asserts over named rows only and never over a whole-set count.
 	/// </para>
+	/// <para>
+	/// The <c>Scope</c> trait is declared per test rather than on the class, because one test here is
+	/// <c>Characterization</c> and the rest are <c>Contract</c>. xUnit accumulates traits rather than letting a
+	/// method override a class, so a class-level <c>Contract</c> would leave that one test selected by
+	/// <c>--filter "Scope=Contract"</c> no matter what the method declared.
+	/// </para>
 	/// </remarks>
 	[Collection(TestCollections.SharedStore)]
-	[Trait("Scope", "Contract")]
 	public class SnapshotDeepCopyTests : BaseUnitTests<IExampleDataAccess>
 	{
 		/// <summary>The value written through a navigation property. No operation in this class may ever store it.</summary>
@@ -120,6 +125,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldNotStoreEditsMadeThroughARetrievedUsersNavigationProperties()
 		{
 			//setup
@@ -187,6 +193,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldNotStoreEditsMadeThroughARetrievedTransactionsSecondLevel()
 		{
 			//setup
@@ -246,6 +253,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldNotStoreEditsMadeToAUsersNavigationAfterInsertReturned()
 		{
 			//setup
@@ -298,6 +306,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldNotStoreEditsMadeToAUsersNavigationAfterUpdateReturned()
 		{
 			//setup
@@ -350,6 +359,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldNotStoreEditsMadeThroughATransactionsSecondLevelAfterInsertReturned()
 		{
 			//setup
@@ -404,6 +414,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldGiveEachRetrievedUserItsOwnNavigationInstances()
 		{
 			//setup
@@ -452,6 +463,7 @@ namespace ProphetsWay.Example.Tests
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldGiveTwoUsersNamingOneCompanyTheirOwnCompanyInstances()
 		{
 			//setup
@@ -472,12 +484,25 @@ namespace ProphetsWay.Example.Tests
 		public delegate void RollBackAssertion(IExampleDataAccess reader);
 
 		/// <summary>
+		/// What the store looked like from inside the open transaction, before anything was rolled back.
+		/// Asserted separately from <see cref="RollBackAssertion"/> because it is not scoped the same way - see
+		/// <see cref="ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt"/>.
+		/// </summary>
+		public delegate void UncommittedReadAssertion();
+
+		/// <summary>
 		/// A rollback has to restore a value that was edited through a navigation property, which it can only do
 		/// if the undo entry it wrote holds a copy of that node rather than a reference to it. An entry sharing
 		/// the node with whatever the update then stored would record the edit rather than the state before it,
 		/// and the rollback would put the edit back.
 		/// </summary>
-		public static (User Edit, RollBackAssertion Assert) Setup_UpdateNavigationInsideTransaction_TestRollBackRestoresIt(IExampleDataAccess da)
+		/// <remarks>
+		/// The uncommitted read this performs is asserted over by two callers with two different scopes, so it
+		/// hands back two assertions rather than one. <see cref="RollBackAssertion"/> covers what the store must
+		/// read as afterwards; <see cref="UncommittedReadAssertion"/> covers the one thing the update was
+		/// required to have done to the navigation node before it, which no relational store can do.
+		/// </remarks>
+		public static (User Edit, RollBackAssertion Assert, UncommittedReadAssertion AssertUncommittedCascade) Setup_UpdateNavigationInsideTransaction_TestRollBackRestoresIt(IExampleDataAccess da)
 		{
 			//committed before the transaction opens, so its prior state is what the rollback has to restore
 			var seed = InsertUserWithNavigation(da);
@@ -498,7 +523,7 @@ namespace ProphetsWay.Example.Tests
 
 			return (edit, (reader) =>
 			{
-				uncommitted.Company.Name.ShouldBe(EditedName);
+				//the scalar the update submitted is readable from inside the transaction that submitted it
 				uncommitted.Whatever.ShouldBe(EditedName);
 
 				var stored = reader.Get(new User { Id = seed.User.Id });
@@ -512,10 +537,15 @@ namespace ProphetsWay.Example.Tests
 				//and the company row was never in this transaction's way to begin with
 				reader.Get(new Company { Id = seed.Company.Id }).Name.ShouldBe(companyName);
 			}
+			, () =>
+			{
+				uncommitted.Company.Name.ShouldBe(EditedName);
+			}
 			);
 		}
 
 		[Fact]
+		[Trait("Scope", "Contract")]
 		public void ShouldRestoreANavigationPropertyEditedInsideARolledBackTransaction()
 		{
 			//setup
@@ -527,6 +557,42 @@ namespace ProphetsWay.Example.Tests
 			//assert - read through an instance that had no part in writing any of it
 			using (var reader = TestDataAccessFactory.Create())
 				test.Assert(reader);
+		}
+
+		/// <summary>
+		/// <b>Characterization, not contract.</b> The setup edits <see cref="User.Company"/> on a retrieved user
+		/// and calls <c>Update</c>; this asserts the new name reads back through the same navigation property
+		/// while the <see cref="Company"/> row itself still carries the old one - which the sibling test above
+		/// asserts, as contract, after the rollback.
+		/// </summary>
+		/// <remarks>
+		/// <para>
+		/// Both at once are only satisfiable by a store that denormalizes.
+		/// <c>ProphetsWay.Example.DataAccess.NoDB</c> passes because <c>UserDao.Update</c> writes a deep copy of
+		/// the user into the Users table, so the user's view of a company and the Companies table are physically
+		/// separate data and can legitimately disagree. A normalized relational store holds one Companies row
+		/// with one name and reads it back through a join, so it cannot make the two differ - and an
+		/// implementation that wrote the root and cascaded through the navigation would be rewriting Company,
+		/// Job and Department rows the caller never named.
+		/// </para>
+		/// <para>
+		/// It is therefore a property of the in-memory store's row shape rather than something the SNAPSHOT RULE
+		/// on <see cref="IExampleDataAccess"/> asks of a conforming Data Access Layer, and it must not be
+		/// promoted back to <c>Contract</c>. Nothing else in this class depends on it.
+		/// </para>
+		/// </remarks>
+		[Fact]
+		[Trait("Scope", "Characterization")]
+		public void ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt()
+		{
+			//setup - the Update this asserts over, and the read of it, both happen here
+			var test = Setup_UpdateNavigationInsideTransaction_TestRollBackRestoresIt(_da);
+
+			//assert
+			test.AssertUncommittedCascade();
+
+			//the setup left a transaction open, and none of it is meant to reach the store
+			_da.TransactionRollBack();
 		}
 
 		#endregion
