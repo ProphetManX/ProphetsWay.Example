@@ -30,7 +30,7 @@ them, because duplicated rules drift.
 | 2 | [A value-type (`struct`) entity](#2--a-value-type-struct-entity) | Deferred — cheap only if 1 lands first |
 | 3 | [Bare `IBaseSoftEntity` — soft delete without an identifier](#3--bare-ibasesoftentity--soft-delete-without-an-identifier) | **Rejected** — not deferred |
 | 4 | [Demonstrating that ambient `TransactionScope` is left untouched](#4--demonstrating-that-ambient-transactionscope-is-left-untouched) | **Rejected here** — belongs to a database-backed implementation |
-| 5 | [Advance the EFTools submodule pointer onto the 3.x contracts](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) | **Proposed** — first step landed 2026-08-16; the claim it tracks is still pending |
+| 5 | [Advance the EFTools submodule pointer onto the 3.x contracts](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) | **Proposed** — re-triaged 2026-08-16; the pointer landed and EFTools now **compiles green**, but the claim it tracks is still not demonstrable — the reason has moved twice |
 | 6 | [The committed developer-specific publish profile](#6--the-committed-developer-specific-publish-profile) | **Done** — genericized in v3.1.0, file kept |
 | 7 | [A Visual Studio onboarding note in the README](#7--a-visual-studio-onboarding-note-in-the-readme) | **Proposed** — trivial, high leverage |
 | 8 | [Selecting the implementation from configuration instead of a code edit](#8--selecting-the-implementation-from-configuration-instead-of-a-code-edit) | **Rejected** — decided in code comments already |
@@ -38,7 +38,7 @@ them, because duplicated rules drift.
 | 10 | [A second Data Access Layer implementation in this repository — SQLite, MSSQL, or relocating the Entity Framework one](#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one) | **Rejected** — all four variants, including replacing `.NoDB` |
 | 11 | [The two mis-scoped `Contract` assertions, and why `.NoDB` stays](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | **Done** — both halves applied 2026-08-16; a third mis-scope closed with them |
 | 12 | [A traceability rule for `Contract`-scoped assertions](#12--a-traceability-rule-for-contract-scoped-assertions) | **Proposed** — the cheap control that would have caught mis-scope 2 |
-| 13 | [A seam letting another repository point this suite at its own implementation](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation) | **Scheduled** — direction approved 2026-08-16 (shape B); **the seam's design is deliberately deferred** until Lap 1 of the Entity Framework work shows what it must carry |
+| 13 | [A seam letting another repository point this suite at its own implementation](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation) | **Scheduled** — direction approved 2026-08-16 (shape B); **implementation begun the same day and unverified**. Three constraints emerged with it — see the entry |
 | 14 | [Restoring `DateTimeKind` on a `Department` reached as a navigation property](#14--restoring-datetimekind-on-a-department-reached-as-a-navigation-property) | **Proposed** — 2026-08-16; the gap left open by narrowing `IDepartmentDao` rule 18 to that Data Access Object's own reads |
 
 Numbers are permanent. Entries are never renumbered and never removed —
@@ -313,6 +313,12 @@ were all left behind by the pointer. That is a known waypoint recorded in that r
 `AGENTS.md`, not a regression, but anyone reading this entry expecting the claim to be closer to true should
 know the intermediate state is a red build.
 
+> **Superseded later on 2026-08-16 — the red build is gone and the paragraph above is history.**
+> `dotnet build ProphetsWay.EFTools.sln -c Debug` succeeded on that date, SDK 10.0.400, 7 warnings, 0 errors,
+> every project compiling — including this repository's `ProphetsWay.Example.Tests` on **both** its `net48`
+> and `net10.0` legs, and `ProphetsWay.Example.Database` producing a `.dacpac` under the .NET CLI. **Do not
+> restate "EFTools does not compile."** What is *not* fixed is this entry's claim; see the correction below.
+
 `ProphetsWay.EFTools` consumes this repository as a **git submodule**, not a vendored copy — its
 `.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The
 two therefore cannot drift; the submodule is **pinned**.
@@ -323,10 +329,10 @@ two therefore cannot drift; the submodule is **pinned**.
 `.git/refs/heads/main` here — the two are the same commit. The rest of the entry is unaffected and the status
 line above is deliberately untouched; only `Purpose Refiner` may change it.
 
-The consequence is a coordination requirement rather than a duplication problem. `ProphetsWay.Example.DataAccess.EF`
+The consequence is a coordination requirement rather than a duplication problem. ~~`ProphetsWay.Example.DataAccess.EF`
 still implements the *pre-3.0.0* `IExampleDataAccess` — no `Dispose`, no `Department`, no `CompanyResource`, no
 snapshot rule, no ordering rule — and both it and `ProphetsWay.EFTools` itself still reference
-`ProphetsWay.BaseDataAccess` **2.5.0**, verified in their two `.csproj` files. So the README's headline
+`ProphetsWay.BaseDataAccess` **2.5.0**, verified in their two `.csproj` files.~~ So the README's headline
 sentence —
 
 > "`ProphetsWay.EFTools` carries an Entity Framework implementation of the very same `IExampleDataAccess`
@@ -335,10 +341,38 @@ sentence —
 — is true of the old pinned commit and **false of the current contracts**. The single sentence that makes this
 repository worth reading is, right now, a statement about history.
 
-**The work**, the remainder of it in `ProphetsWay.EFTools`: ~~advance the pointer~~ (done), add the two new
-entities and their Data
-Access Object interfaces to the Entity Framework implementation, implement `Dispose` and the three transaction
-members against the real context, and satisfy the snapshot and ordering rules — the ordering rule in
+**Corrected 2026-08-16 — the struck sentence above is false, and the claim is still pending for a different
+reason. This is the second time the reason has moved; read this rather than the paragraphs above it.**
+
+Verified by opening `ProphetsWay.EFTools/ProphetsWay.EFTools/ProphetsWay.EFTools.csproj`,
+`ProphetsWay.EFTools/ProphetsWay.Example.DataAccess.EF/ProphetsWay.Example.DataAccess.EF.csproj`,
+`ProphetsWay.Example.DataAccess.EF/ExampleContext.cs`, and by searching that project for `NotWrittenYet`:
+
+- **Both projects now reference `ProphetsWay.BaseDataAccess` 3.1.0.** The 2.5.0 claim is retired.
+- **`ExampleDataAccess` does satisfy the 3.1.0 `IExampleDataAccess`** — `Dispose` is inherited from
+  `BaseEFDataAccess`, which now implements it, and the two new Data Access Object groups are present.
+- **They are present as 11 members that throw `NotImplementedException`.** Eight `IDepartmentDao` members,
+  three `ICompanyResourceDao` members, each naming itself and pointing at the specification.
+- **`ExampleContext` maps neither new entity** — no `DbSet<Department>`, no `DbSet<CompanyResource>`, no
+  mapping for either.
+
+**So the failure has moved from "will not compile" to "compiles and throws."** That is genuine progress and it
+is not the claim becoming true — if anything the tree is now *more* capable of misleading a casual reader,
+because a green build looks like evidence. **The single sentence that makes this repository worth reading is
+still a statement about history.** It becomes a statement about the present when the 11 members are
+implemented, the two entities are mapped, and
+`dotnet test --filter "Scope=Contract"` passes against the Entity Framework Data Access Layer through the seam
+in [entry 13](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation).
+
+**The status stays `Proposed`, and the three reasons given above are unchanged by any of this.** Not `Done` —
+the claim is still false. Not `Deferred` — nothing is parked. Not `Scheduled` — there is still nothing in
+*this* repository to schedule beyond entry 13, which is separately `Scheduled` and separately tracked.
+
+**The work**, the remainder of it in `ProphetsWay.EFTools`: ~~advance the pointer~~ (done), ~~implement
+`Dispose`~~ (done 2026-08-16, in `BaseEFDataAccess`), add the two new entities and their Data
+Access Object interfaces to the Entity Framework implementation — **which now means replacing 11 throwing
+stubs and mapping two entities the context does not know about**, not writing from nothing — and satisfy the
+snapshot and ordering rules; the ordering rule in
 particular requires an explicit `ORDER BY` on both `GetAll` and `GetPaged`, which is precisely the divergence
 the rule was written to catch. Then run `dotnet test --filter "Scope=Contract"` there.
 
@@ -365,8 +399,10 @@ work — so the sequence closing this entry is Lap 1, then the seam, then a gree
 `dotnet test --filter "Scope=Contract"` against the Entity Framework implementation.
 
 **Related, discovered while verifying the submodule and belonging to that repository:** `.gitmodules` in
-`ProphetsWay.EFTools` carries a stray second block, `[submodule "Submod"]`, with only `branch = main` and no
-`path` or `url`. Git tolerates it today; it will confuse `git submodule` operations eventually.
+`ProphetsWay.EFTools` carried a stray second block, `[submodule "Submod"]`, with only `branch = main` and no
+`path` or `url`. Git tolerated it; it produced a Source Link warning on every build and would have confused
+`git submodule` operations eventually. It is tracked as **ProphetsWay.EFTools FR 9** and was being removed by
+`Modernizer` on 2026-08-16; the state of that file is not this repository's to report.
 
 ---
 
@@ -888,6 +924,57 @@ nothing in this index covered it.
 
 **Read the next section before reading anything else here.** The status moved because the *direction* is
 now committed; **the seam's design is not**, and that is deliberate rather than unfinished.
+
+### Implementation has begun — 2026-08-16, and it is unverified
+
+**An `Interface Architect` is implementing the seam as this is written.** Recorded so that a later reader
+knows the gap between "approved" and "in the tree" was closed by someone, and knows equally that **nothing
+here has been checked**.
+
+**This entry is deliberately not `Done`, and must not be advanced to `Done` on the strength of this
+paragraph.** The work is mid-flight; no file has been verified by this agent, no build has been run against
+it, and no Entity Framework implementation has yet been pointed at the suite through it. `Done` becomes
+available when the seam exists, the suite still passes unchanged against `.NoDB`, and
+`ProphetsWay.EFTools` can reach it — which is
+[ProphetsWay.EFTools FR 6](../../ProphetsWay.EFTools/docs/feature-requests.md#6--rebuild-prophetswayeftoolstests-on-the-3x-factory-and-scope-traits).
+
+**Note also that the design was expected to wait for Lap 1** — the section below says so, and says the
+absence of a design is not outstanding work. Implementation starting ahead of that is the owner's call and is
+not a defect; it does mean the requirements the seam was to be *shaped by* are still not known, so the first
+Entity Framework implementer may find it does not carry what they need. That is the risk that was being
+avoided, taken knowingly.
+
+#### Three constraints emerged during implementation, and they bind whatever shape lands
+
+Recorded here rather than left in a conversation, because each one closes a route that looks obvious from a
+cold start.
+
+1. **A per-class virtual hook is rejected.** Giving each test class an overridable creation member is
+   functionally the restoration of `protected abstract T GetIExampleDataAccess { get; }` under a new name: a
+   consuming repository has to derive from every test class to supply the implementation, which **recreates
+   the six adapter files deleted from `ProphetsWay.EFTools` on 2026-08-16**. Those six were four to five lines
+   each and contained no test logic; re-creating them is undoing work, not building on it. The first row of
+   [Shapes worth weighing](#shapes-worth-weighing--the-decision-is-the-direction-not-the-mechanism) names this
+   cost, and the sketch under it inherits the same objection. **The sketch is not thereby approved and is not
+   thereby dead** — it is a per-class hook, and this constraint is the argument against it stated at full
+   strength.
+2. **[Entry 8](#8--selecting-the-implementation-from-configuration-instead-of-a-code-edit)'s rejection does
+   not cover this, and the distinction has now had to be restated twice.** Entry 8 declined reading the
+   choice from an **environment variable or a `.runsettings` parameter** — configuration-driven selection at
+   run time. A code seam is a different proposal with a different motivation and a different cost; the table
+   in [This is not entry 8](#this-is-not-entry-8) sets them side by side. Anyone summarizing either entry
+   must carry the distinction, and a reviewer who blocks this citing entry 8 has misread it.
+3. **Thread safety is a live concern, not a theoretical one.** xUnit runs test collections **in parallel by
+   default**, so any mutable static seam — the settable `Func<IExampleDataAccess>` in the second row of the
+   shapes table, most obviously — is shared across concurrently executing collections. It must therefore be
+   written **before any test constructs a Data Access Layer** and never after, or a collection already
+   running will construct the wrong implementation. A design that requires ordering discipline it cannot
+   enforce is a design that fails intermittently, which is the worst failure mode available in a repository
+   whose product is a suite other people trust. Whatever ships must state where the write happens and why no
+   test can observe a half-set seam.
+
+**All three are constraints on the mechanism, not reopenings of the direction.** Shape B stands; shape A
+remains struck.
 
 ### Owner decision — 2026-08-16: the direction is approved, the design is deferred
 
