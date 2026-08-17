@@ -1,3 +1,184 @@
+# v3.1.1 — not yet released
+This line is open.  The owner will not tag it until everything ```ProphetsWay.EFTools``` needs from this 
+repository is in place, so further work may land under this same number and the entry below describes the 
+state of the line rather than the contents of a release.
+
+Nothing in the two Data Access Layer projects changed behavior — no ```.cs``` file under 
+```ProphetsWay.Example.DataAccess``` or ```ProphetsWay.Example.DataAccess.NoDB``` gained or lost a line of 
+executable code.  What changed is the specification those projects carry, the test project that enforces it, 
+and one seam in the test project that lets a different repository run the enforcement against its own 
+implementation.  Read the second and third sections below before upgrading anything written against the 3.1.0 
+contract text: one of them tightens what an implementation must do, and one of them withdraws something a 
+caller was previously promised.
+
+### A second repository can now point this suite at its own Data Access Layer
+```TestDataAccessFactory``` gained ```Use```:
+
+```c#
+	public static void Use(Func<IExampleDataAccess> implementation)
+```
+
+Since 3.0.0 the factory has been the only place in the test project that names an implementation, and the 
+promise attached to it was that changing its one ```return``` repoints the whole suite.  That promise held for 
+anyone who could edit the file.  ```ProphetsWay.EFTools``` consumes this repository as a pinned git submodule 
+under a standing instruction never to edit a file underneath it — so the one repository that most wants to run 
+this suite against its own Data Access Layer was the one repository that could not.  ```Use``` is the way in, 
+and it is what turns this repository's central claim — that the same tests pass against different 
+implementations — into something checkable rather than asserted.
+
+A consuming assembly writes one file and derives from nothing:
+
+```c#
+	internal static class TestSeam
+	{
+		[ModuleInitializer]
+		internal static void PointTheSuiteAtEntityFramework()
+		{
+			TestDataAccessFactory.Use(() => new ExampleDataAccess(Constants.ConnectionString));
+		}
+	}
+```
+
+A delegate is taken rather than an instance, so construction inputs the default does not need — a provider, a 
+connection string, a context factory — are closed over in the consumer and supplied nowhere else.  Nothing 
+here assumes a parameterless constructor on the consumer's side, and the delegate is invoked once per 
+instance rather than once in total, because the suite builds a fresh Data Access Layer for every test and 
+several tests build a second alongside it.
+
+**The seam latches on first use.** ```Use``` after ```Create``` has already handed an instance out throws 
+```InvalidOperationException``` rather than swapping mid-run, because xUnit runs collections in parallel and 
+a suite half-run against the wrong Data Access Layer reports a plausible mixture of passes and failures and 
+names nothing.  Both methods take the same lock, so there are two outcomes and no third: either every 
+instance in the run comes from the supplied delegate, or the call throws.  A ```[ModuleInitializer]``` is 
+named above rather than a fixture because the runtime runs it before the test runner can construct a test 
+class, whereas a class or collection fixture is constructed when its own collection starts and another 
+collection may already be several tests in.  Passing null throws ```ArgumentNullException```; null is not a 
+way to ask for the default back, because one seam set once is the whole value and a reset is a second seam.
+
+**The default is unchanged and is still the one obvious line.** Nothing in this repository calls ```Use```, 
+nothing consults an environment variable or a runner parameter, and the mis-wired Data Access Layers under 
+```ConventionShowcase``` construct their own and are untouched by the seam — they are the subject of their 
+tests rather than the implementation under test.  Reasoning and the constraints that shaped the mechanism are 
+in ```docs/feature-requests.md``` entry 13.
+
+### Two contract rules that now bind every Data Access Object
+```IExampleDataAccess``` gained an **identifier rule** and a **row count rule**, bringing it to four 
+Data-Access-Layer-wide rules alongside the snapshot and ordering rules.
+
+The identifier rule: ```Insert``` assigns the identifier of the row it stored onto the instance the caller 
+passed in, before it returns, so a caller reads the identifier off its own instance *after* the call.  It is 
+the write-back the snapshot rule's closing sentence anticipates, and the only value ```Insert``` writes back 
+unless a Data Access Object states another.  It reads the same for an ```int```, a ```long``` and a 
+```Guid```.  What becomes of an identifier the caller pre-assigned is deliberately left unspecified — an 
+identity column cannot honor a supplied value and a client-generated ```Guid``` reasonably can — so pass an 
+entity with its identifier at its default and depend on neither answer.  ```ICompanyResourceDao``` is outside 
+the rule because ```CompanyResource``` carries no identifier at all.
+
+The row count rule: ```Update``` and ```Delete``` return ```1``` when the argument identified a row the 
+operation applied to and ```0``` when it identified none — never negative, never more than one.  A return of 
+```0``` throws nothing.  **The clause most easily lost is that ```Update``` reports that a row matched, not 
+that a value changed**: updating a row with values identical to the ones already stored returns ```1```.  An 
+implementation returning whatever its storage layer reports as rows-*modified* returns ```0``` there, while 
+the same implementation over a layer reporting rows-*matched* returns ```1``` — two conforming Data Access 
+Layers disagreeing about the same call, which is the exact failure this repository exists to disprove.
+
+**Both are conventions elected here, not changes to ```ProphetsWay.BaseDataAccess```.** That package 
+documents the identifier write-back as "a convention left to the implementation — this library neither 
+performs it nor verifies that it happened", and describes the counts as "typically 1".  Those statements are 
+correct, unchanged, and right for a library that cannot know what its implementations store.  What these two 
+rules do is commit *this* Data Access Layer to the convention.  Do not read them as a promise the base 
+package now makes.
+
+If you have written an implementation of ```IExampleDataAccess``` against the 3.1.0 text, this is the part 
+that can cost you work.  ```IDepartmentDao``` and ```ICompanyResourceDao``` already stated both rules for 
+their own entities; ```ICompanyDao```, ```IJobDao```, ```IUserDao```, ```ITransactionDao``` and 
+```IResourceDao``` left them unsaid while the test suite asserted them anyway.  Those five now say so, and 
+each carries the rules restated in its own terms.
+
+### Rule 18 narrowed — an included Department carries no promised DateTimeKind
+```IDepartmentDao``` rule 18 said that ```CreatedDate```, ```UpdatedDate``` and ```DeletedDate``` carry a 
+```DateTimeKind``` of ```Utc``` both on the instance written back to the caller and on an instance later 
+retrieved.  **The retrieval half now binds that interface's own reads only** — ```Get```, ```GetAll``` and 
+```GetPaged``` on ```IDepartmentDao```.  It expressly does not bind a ```Department``` reached as a 
+navigation property of an entity retrieved through another Data Access Object, such as ```User.Department``` 
+on a user returned by ```IUserDao```, which carries whatever kind the provider supplied — typically 
+```Unspecified``` from a relational one.  Relational providers do not persist a ```DateTimeKind```, and 
+restoring one is a per-Data-Access-Object mechanism that a hard Data Access Object such as ```UserDao``` does 
+not have for these three timestamps.
+
+**State the cost plainly, because the failure is silent.** An ```Unspecified``` value handed to 
+```ToLocalTime``` is taken for local time and shifted by the machine's offset.  Nothing throws; you get a 
+wrong timestamp.  A caller reading one of these three stamps off an included department must apply 
+```DateTime.SpecifyKind(value, DateTimeKind.Utc)``` explicitly rather than trust the kind it finds:
+
+```c#
+	var user = da.Get(new User { Id = id });
+	var created = DateTime.SpecifyKind(user.Department.CreatedDate.Value, DateTimeKind.Utc);
+```
+
+This is the same shape as rule 9, which is equally why a department reached through ```User.Department``` 
+comes back populated even when it is soft-deleted: an include sits outside the mechanisms the retrieving Data 
+Access Object applies to its own reads.  It is an owner decision, recorded in ```docs/feature-requests.md``` 
+entry 14 with the alternative that was declined and why.
+
+**This is a breaking change to the specification**, and it is worth being blunt about which direction it 
+breaks.  An implementation that could not restore the kind on an include was non-conforming under the old 
+text and is conforming under the new one, so nothing that was passing starts failing.  The party who loses is 
+the *caller* who read the old rule and wrote code trusting it.  Nothing is published to nuget.org, so no 
+restore breaks and no assembly needs rebuilding — the artifact this repository ships is the contract text, 
+and the contract text withdrew a promise.
+
+### Four new tests, one retraited, and the counts that follow
+The suite is **164 tests on each of the ```net48``` and ```net10.0``` legs — 328 executions** — partitioned 
+```Contract``` 139, ```Characterization``` 5, ```Dispatcher``` 20.  The three sum to the total, and that sum 
+is the check: a mismatch means a test is untraited or double-traited.
+
+Two of the new tests are ```Contract``` and close a gate hole.  ```dotnet test --filter "Scope=Contract"``` 
+is offered as *the* conformance gate for a newly written Data Access Layer, and two implementation shortcuts 
+passed all 138 of the previous ones.  ```ShouldNotWriteRelatedRowsWhenUpdateIsGivenAnEditedNavigationGraph``` 
+edits ```Company```, ```Job``` and ```Department``` through a retrieved user's navigation properties, calls 
+```Update```, and asserts the three rows the caller never named are unchanged while the row it did name 
+carries its edit — a Data Access Layer that attaches the incoming graph as modified, the natural shortcut for 
+an Entity Framework implementation, rewrites reference data every other user sharing those rows can see.  
+```ShouldNotAdoptTheInstanceHandedToCustomUserFunctionality``` pins the one thing ```IUserDao``` does state 
+about that member, that the instance is read rather than adopted, which an implementation written as 
+```_users[user.Id] = user``` violates while satisfying every other assertion in the suite.
+
+The other two new tests are ```Characterization```, and one existing test moved from ```Contract``` to 
+```Characterization```.  A ```Contract``` assertion is an obligation placed on every future implementer, so 
+one that traces to no stated rule does not belong in that scope.  ```ShouldGetCustomFunctionality``` was 
+asserting a ```private const``` of the in-memory ```UserDao``` that no interface names, and the uncommitted 
+half of the rolled-back-transaction navigation test was asserting a row shape only a denormalizing store can 
+produce; that test was split, its contract half kept and renamed, and its characterization half given its own 
+name.  ```ShouldCallCustomUserFunctionality``` was separated out for the same reason, so that an 
+implementation whose custom member throws is reported as characterization rather than as a contract failure.
+
+```SnapshotDeepCopyTests``` and ```UserDaoTests``` consequently declare ```Scope``` per method rather than on 
+the class, joining ```CompanyDaoTests``` and ```DataAccessTransactionTests```.  That is required rather than 
+stylistic: **xUnit accumulates traits rather than letting a method override its class**, so a class-level 
+```Contract``` on a class with any ```Characterization``` test leaves that test selected by 
+```--filter "Scope=Contract"``` no matter what the method declares.
+
+### Two helpers xUnit was warning about
+```EditEveryFieldAfterTheCall``` and ```AssertEveryStampIsUtc``` in ```DepartmentDaoTests``` were 
+```public static``` and are now ```private static```.  Neither is a test — they are a shared edit and a 
+shared assertion — and the visibility was the defect that made the analyzer say otherwise.  That clears four 
+```xUnit1013``` warnings, two on each leg, and **the build is now warning-free**.
+
+### Documentation
+```AGENTS.md```, ```docs/repo-profile.md```, ```docs/purpose-and-scope.md``` and 
+```docs/feature-requests.md``` were re-verified against source rather than against each other, and corrected.  
+Superseded suite counts were swept out, and the description of the ```ProphetsWay.EFTools``` submodule 
+pointer was corrected — it had been described as a vendored copy pinned before 3.0.0, and it is a submodule 
+now pinned at 3.1.0.  Entry 11 is closed as ```Done```; entries 13 and 14 were filed for the seam and the 
+rule 18 narrowing.
+
+### Verification
+164 tests passing on each leg independently — ```net10.0``` and ```net48``` — for 328 executions, with the 
+three scope filters run separately and returning 139, 5 and 20.  A clean rebuild of the test project reports 
+0 warnings and 0 errors.
+
+
 # v3.1.0
 ### The test suite did not change, and that is the point
 Not one ```.cs``` file was touched in this release.  The 160 tests are byte-identical to the ones 3.0.0 
