@@ -13,6 +13,13 @@ namespace ProphetsWay.Example.Tests
 		/// place in this suite that names an implementation, and the one line to change to run everything
 		/// here against a different one.
 		/// </summary>
+		/// <remarks>
+		/// There is deliberately no overridable hook here. A repository that cannot edit this file points the
+		/// whole suite at its own implementation with a single call to <see cref="TestDataAccessFactory.Use"/>,
+		/// rather than by deriving from each test class and overriding once per class - which is what the
+		/// adapter files deleted in 3.0.0 did, and what a hook here would bring back. See the remarks on
+		/// <see cref="TestDataAccessFactory"/>.
+		/// </remarks>
 		public BaseUnitTests()
 		{
 			_da = TestDataAccessFactory.CreateAs<T>();

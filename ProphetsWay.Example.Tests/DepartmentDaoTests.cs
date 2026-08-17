@@ -291,7 +291,7 @@ namespace ProphetsWay.Example.Tests
 		/// has already returned. <see cref="Entities.BaseIntEntity.Id"/> is left alone so that the assertion still
 		/// has an identifier to fetch the row back by.
 		/// </summary>
-		public static void EditEveryFieldAfterTheCall(Department dept)
+		private static void EditEveryFieldAfterTheCall(Department dept)
 		{
 			dept.Name = "Renamed after the call returned.";
 			dept.Description = "Edited after the call returned.";
@@ -998,7 +998,7 @@ namespace ProphetsWay.Example.Tests
 		/// Rule 18 across a whole retrieved set. Every department in the store arrived through <c>Insert</c>, so
 		/// every one of them carries stamps this can be asserted on.
 		/// </summary>
-		public static void AssertEveryStampIsUtc(IEnumerable<Department> departments)
+		private static void AssertEveryStampIsUtc(IEnumerable<Department> departments)
 		{
 			foreach (var dept in departments)
 			{
