@@ -39,15 +39,21 @@ change is in isolation.
 ### The load-bearing invariant
 
 [ProphetsWay.Example.Tests/TestDataAccessFactory.cs](../ProphetsWay.Example.Tests/TestDataAccessFactory.cs) is
-the only file in the test project that names a concrete implementation. One `return` repoints all 164 tests:
+the only file in the test project that names a concrete implementation. One line repoints all 164 tests:
 
 ```csharp
-public static IExampleDataAccess Create()
-{
-	//>>> The one line to change to point this suite at another implementation. <<<
-	return new ExampleDataAccess();
-}
+//>>> The one line to change to point this suite at another implementation. <<<
+private static Func<IExampleDataAccess> _implementation = () => new ExampleDataAccess();
 ```
+
+**Corrected 2026-08-16 — the snippet above used to be a `Create()` returning `new ExampleDataAccess()`
+directly, and that is no longer what the file contains.** Verified by opening it. The seam of
+[FR 13](feature-requests.md#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation)
+landed on that date: the implementation is now a private `static Func<>` field carrying the same comment,
+`Create()` invokes it, and `TestDataAccessFactory.Use(Func<IExampleDataAccess>)` lets a repository that
+**cannot edit this file** — `ProphetsWay.EFTools`, which holds it as a pinned submodule — supply its own.
+**The invariant is unchanged and so is the count**: one naming site, one line, all 164 tests. What changed is
+that the line is now *reachable* as well as visible.
 
 **Treat this as an invariant, not a convenience.** A second construction site anywhere in the suite does not
 merely add work when swapping implementations — it silently destroys the property the repository exists to
@@ -269,6 +275,39 @@ it from *here* would be worse than deferring it, because these tests are written
 be parameterised over an implementer's own entities, which is a different artifact that happens to resemble
 this one. Publishing this suite would also cost the repository the property that makes it valuable: the moment
 the tests are a package, changing them stops being a documentation edit and starts being a release.
+
+### Deployment Profile and Release Sequencing — Owner Decisions, 2026-08-16
+
+Two decisions taken on this date bear on the section above and on when this repository ships. Both are
+recorded in full, with their reasoning, in
+[docs/feature-requests.md § Owner Decisions Binding This Repository's Release](feature-requests.md#owner-decisions-binding-this-repositorys-release--2026-08-16);
+they are noted here because this is the section a reader arrives at when asking whether this repository is
+published.
+
+**The deployment profile does not change.** In the owner's words: ***"Example shouldn't change its deployment
+profile."*** The context was a discussion of how `ProphetsWay.EFTools` consumes this repository during the 3.x
+release, not a proposal to alter anything. So the paragraphs above stand unchanged and are now **ratified
+rather than merely inferred**: teaching artifact, not a NuGet package; `PostTargetToNuGet` stays commented out
+in [app-variables.yml](../app-variables.yml); the packaging stubs stay empty on purpose;
+`docs/nuget-extraction-proposal.md` stays `n/a`; and EFTools continues to consume this repository as a
+**pinned git submodule**.
+
+**Release sequencing places one gate on this repository, and it is worth stating here because it is easily
+misread as a publication decision.** Owner decision **D11** — recorded in
+[ProphetsWay.EFTools/docs/purpose-and-scope.md](../../ProphetsWay.EFTools/docs/purpose-and-scope.md#release-ordering--settled-d11)
+— has all remaining EFTools 3.x work done against this repository's **live submodule working tree**, and has
+this repository **tagged and released only once that Entity Framework implementation is green against it**.
+The reason is that implementing against a contract is what exposes gaps in it: **`IDepartmentDao` rule 18 was
+narrowed on 2026-08-16 as a direct result of Entity Framework design work**, changing this repository's
+interface, and tagging first risks a second such discovery and a second release.
+
+**"Tagged and released" there means a git tag and a version line — not a package.** The two decisions are
+consistent precisely because those are different things. A sequencing decision cannot authorise publication in
+passing, and this one does not: if publishing this repository is ever proposed, it is a **purpose-level**
+change and returns through triage.
+
+**Neither decision moved any feature request's status**, and neither is this document's to act on beyond
+recording it.
 
 ---
 
