@@ -403,7 +403,7 @@ namespace ProphetsWay.Example.Tests
 		/// </para>
 		/// <para>
 		/// Nothing here asserts what the user's own view of those navigation properties reads back as. That is the
-		/// point <see cref="ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt"/> covers as
+		/// point <see cref="ShouldReadANavigationPropertyEditBackOnlyWhereTheStoreDenormalizesTheWrite"/> covers as
 		/// characterization, because only a store that denormalizes can make the user's view and the row disagree.
 		/// The row is what every conforming implementation has in common, so the row is what this asserts over.
 		/// </para>
@@ -566,7 +566,7 @@ namespace ProphetsWay.Example.Tests
 		/// <summary>
 		/// What the store looked like from inside the open transaction, before anything was rolled back.
 		/// Asserted separately from <see cref="RollBackAssertion"/> because it is not scoped the same way - see
-		/// <see cref="ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt"/>.
+		/// <see cref="ShouldReadANavigationPropertyEditBackOnlyWhereTheStoreDenormalizesTheWrite"/>.
 		/// </summary>
 		public delegate void UncommittedReadAssertion();
 
@@ -579,8 +579,10 @@ namespace ProphetsWay.Example.Tests
 		/// <remarks>
 		/// The uncommitted read this performs is asserted over by two callers with two different scopes, so it
 		/// hands back two assertions rather than one. <see cref="RollBackAssertion"/> covers what the store must
-		/// read as afterwards; <see cref="UncommittedReadAssertion"/> covers the one thing the update was
-		/// required to have done to the navigation node before it, which no relational store can do.
+		/// read as afterwards; <see cref="UncommittedReadAssertion"/> covers what the update did to the navigation
+		/// node before it, which is one thing for a store that denormalizes the write and the opposite for one
+		/// that does not - so that assertion, and only that assertion, reads
+		/// <see cref="TestDataAccessFactory.Capabilities"/>.
 		/// </remarks>
 		public static (User Edit, RollBackAssertion Assert, UncommittedReadAssertion AssertUncommittedCascade) Setup_UpdateNavigationInsideTransaction_TestRollBackRestoresIt(IExampleDataAccess da)
 		{
@@ -631,7 +633,16 @@ namespace ProphetsWay.Example.Tests
 			}
 			, () =>
 			{
-				uncommitted.Company.Name.ShouldBe(EditedName);
+				//A store that denormalizes the write keeps the user's view of the company apart from the Companies
+				//row, so the two may legitimately disagree and the submitted edit reads back here. A normalized
+				//store holds one row with one name and reads it back through a join, so what it owes instead is the
+				//stronger half - that the Update did not cascade into a row the caller never named - and the
+				//committed name arriving here is what proves it did not.
+				var expected = TestDataAccessFactory.Capabilities.HasFlag(StoreCapabilities.DenormalizedNavigationWrites)
+					? EditedName
+					: companyName;
+
+				uncommitted.Company.Name.ShouldBe(expected);
 			}
 			);
 		}
@@ -639,7 +650,7 @@ namespace ProphetsWay.Example.Tests
 		/// <summary>
 		/// Named for what it asserts rather than for what its setup does. The setup does edit a navigation property
 		/// and submit it; this test does not assert that the edit was ever stored, because only a denormalizing
-		/// store can show that - see <see cref="ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt"/>,
+		/// store can show that - see <see cref="ShouldReadANavigationPropertyEditBackOnlyWhereTheStoreDenormalizesTheWrite"/>,
 		/// which is where that assertion lives and why it is characterization. What is contract here is that after
 		/// the rollback every row reads as it did before the transaction opened: the user's scalar restored to the
 		/// value it carried, and the company, job and department rows unchanged throughout.
@@ -661,29 +672,37 @@ namespace ProphetsWay.Example.Tests
 
 		/// <summary>
 		/// <b>Characterization, not contract.</b> The setup edits <see cref="User.Company"/> on a retrieved user
-		/// and calls <c>Update</c>; this asserts the new name reads back through the same navigation property
-		/// while the <see cref="Company"/> row itself still carries the old one - which the sibling test above
-		/// asserts, as contract, after the rollback.
+		/// and calls <c>Update</c>; what reads back through that same navigation property while the transaction is
+		/// still open depends on the store's row shape, so this asserts one outcome or the other according to what
+		/// the implementation declared through <see cref="TestDataAccessFactory.Use"/>.
 		/// </summary>
 		/// <remarks>
 		/// <para>
-		/// Both at once are only satisfiable by a store that denormalizes.
-		/// <c>ProphetsWay.Example.DataAccess.NoDB</c> passes because <c>UserDao.Update</c> writes a deep copy of
-		/// the user into the Users table, so the user's view of a company and the Companies table are physically
-		/// separate data and can legitimately disagree. A normalized relational store holds one Companies row
-		/// with one name and reads it back through a join, so it cannot make the two differ - and an
-		/// implementation that wrote the root and cascaded through the navigation would be rewriting Company,
-		/// Job and Department rows the caller never named.
+		/// <b>Both at once are only satisfiable by a store that denormalizes.</b>
+		/// <c>ProphetsWay.Example.DataAccess.NoDB</c> reads back the edit because <c>UserDao.Update</c> writes a
+		/// deep copy of the user into the Users table, so the user's view of a company and the Companies table are
+		/// physically separate data and can legitimately disagree - and the sibling test above asserts, as
+		/// contract, that the Companies row still carries the old name after the rollback. A normalized relational
+		/// store holds one Companies row with one name and reads it back through a join, so it cannot make the two
+		/// differ, and an implementation that wrote the root and cascaded through the navigation would be rewriting
+		/// Company, Job and Department rows the caller never named.
 		/// </para>
 		/// <para>
-		/// It is therefore a property of the in-memory store's row shape rather than something the SNAPSHOT RULE
-		/// on <see cref="IExampleDataAccess"/> asks of a conforming Data Access Layer, and it must not be
-		/// promoted back to <c>Contract</c>. Nothing else in this class depends on it.
+		/// <b>So the assertion branches on
+		/// <see cref="StoreCapabilities.DenormalizedNavigationWrites"/> rather than the test being written for one
+		/// shape and failing for the other.</b> Neither branch is a relaxation. A store declaring that flag must
+		/// read the edit back; a store not declaring it must read the <i>committed</i> name back, which is a
+		/// stronger claim than the one this test used to make - it says the <c>Update</c> did not cascade, from
+		/// inside the transaction that submitted it, where nothing else in this suite looks. What was never true
+		/// and is still not true is that either outcome is asked for by the SNAPSHOT RULE on
+		/// <see cref="IExampleDataAccess"/>: it is a property of the store's row shape, which is exactly why it is
+		/// declared rather than required, and why this <b>must not be promoted to <c>Contract</c></b>. Nothing else
+		/// in this class depends on it.
 		/// </para>
 		/// </remarks>
 		[Fact]
 		[Trait("Scope", "Characterization")]
-		public void ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt()
+		public void ShouldReadANavigationPropertyEditBackOnlyWhereTheStoreDenormalizesTheWrite()
 		{
 			//setup - the Update this asserts over, and the read of it, both happen here
 			var test = Setup_UpdateNavigationInsideTransaction_TestRollBackRestoresIt(_da);

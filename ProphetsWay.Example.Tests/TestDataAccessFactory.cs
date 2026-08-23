@@ -47,10 +47,31 @@ namespace ProphetsWay.Example.Tests
 	/// test rather than the implementation under test. Those classes construct their own and carry no
 	/// dependency on this factory - so <see cref="Use"/> does not, and must not, change what they exercise.
 	/// </para>
+	/// <para>
+	/// <b>The second thing a consumer declares here is the shape of its store, not another implementation
+	/// choice.</b> <see cref="StoreCapabilities"/> exists because two tests in this suite pin behaviour that a
+	/// normalized relational store cannot exhibit at all, and would otherwise hand every correct relational
+	/// implementation a permanent two-test failure. It travels as the second argument to <see cref="Use"/>
+	/// rather than as a seam of its own, so one call in one file states both which implementation the suite
+	/// runs against and what kind of store it is. No <c>Scope=Contract</c> assertion reads it; the reasoning,
+	/// and the limits on what it may ever be used for, are on <see cref="StoreCapabilities"/>.
+	/// </para>
 	/// </remarks>
 	public static class TestDataAccessFactory
 	{
 		private static readonly object _gate = new object();
+
+		/// <summary>
+		/// What <c>ProphetsWay.Example.DataAccess.NoDB</c> is, and therefore what a consumer that declares
+		/// nothing is taken to be: it writes a deep copy of an entity's navigation nodes into its own table, and
+		/// it provides no isolation between instances.
+		/// </summary>
+		/// <remarks>
+		/// Named rather than written out at the two places that need it, so that a reader meeting the default
+		/// parameter on <see cref="Use"/> is told what the default <i>is</i> rather than which flags it happens
+		/// to set. If this repository's own implementation ever changed shape, this is the one line that moves.
+		/// </remarks>
+		public const StoreCapabilities InMemoryStore = StoreCapabilities.DenormalizedNavigationWrites;
 
 		/// <summary>
 		/// The implementation every test in this suite runs against.
@@ -59,14 +80,47 @@ namespace ProphetsWay.Example.Tests
 		private static Func<IExampleDataAccess> _implementation = () => new ExampleDataAccess();
 
 		/// <summary>
+		/// The store shape the suite is currently taken to be running against.
+		/// </summary>
+		private static StoreCapabilities _capabilities = InMemoryStore;
+
+		/// <summary>
 		/// Set by <see cref="Create"/> the first time it hands an instance out, and read by <see cref="Use"/>
 		/// to refuse a swap arriving too late to apply to the whole run.
 		/// </summary>
 		private static bool _created;
 
 		/// <summary>
+		/// What the Data Access Layer under test has declared its store is structurally able to do -
+		/// <see cref="InMemoryStore"/> unless a consumer said otherwise through <see cref="Use"/>.
+		/// </summary>
+		/// <remarks>
+		/// <para>
+		/// Read at execution time, from inside a test, in the same breath as <see cref="Create"/> - which is the
+		/// only moment a consuming assembly's <c>[ModuleInitializer]</c> is known to have run. It is deliberately
+		/// <b>not</b> read at discovery time by a <c>Skip</c> on a custom <c>FactAttribute</c>: a module
+		/// initializer runs before code in its module executes, not before another assembly reflects over its
+		/// metadata, so a discovery-time read may see this default and quietly do nothing. A mechanism that fails
+		/// silently is worse than the failure it was added to remove.
+		/// </para>
+		/// <para>
+		/// <b>Only a <c>Scope=Characterization</c> test may read this.</b> The two that do are named on
+		/// <see cref="StoreCapabilities"/>. A contract test that consulted it would be an obligation an
+		/// implementation could decline, which is not an obligation.
+		/// </para>
+		/// </remarks>
+		public static StoreCapabilities Capabilities
+		{
+			get
+			{
+				lock (_gate)
+					return _capabilities;
+			}
+		}
+
+		/// <summary>
 		/// Points every test in this suite at <paramref name="implementation"/>, for a consuming assembly that
-		/// cannot edit the default line above.
+		/// cannot edit the default line above, and declares what kind of store that implementation writes to.
 		/// </summary>
 		/// <param name="implementation">
 		/// Constructs one Data Access Layer instance per call, and is called once per instance rather than once
@@ -75,6 +129,16 @@ namespace ProphetsWay.Example.Tests
 		/// taken rather than an instance precisely so that construction inputs the default does not need - a
 		/// provider, a connection string, a context factory - can be closed over here and supplied nowhere
 		/// else. Nothing in this seam assumes a parameterless constructor on the consumer's side.
+		/// </param>
+		/// <param name="capabilities">
+		/// What <paramref name="implementation"/>'s store is structurally able to do. Defaults to
+		/// <see cref="InMemoryStore"/>, which is what <c>ProphetsWay.Example.DataAccess.NoDB</c> is - so a
+		/// consumer whose store has the same shape need not pass it, and this repository never does. <b>A
+		/// normalized relational implementation passes <see cref="StoreCapabilities.TransactionIsolation"/>
+		/// and that is the whole of its declaration.</b> Read <see cref="StoreCapabilities"/> before choosing a
+		/// value: it says what each flag means, what may read it, and - just as importantly - what it may never
+		/// be used to excuse. Omitting it when it applies is not a failure this seam can detect; the two tests
+		/// concerned simply fail as they did before, which is the outcome the declaration exists to remove.
 		/// </param>
 		/// <exception cref="ArgumentNullException">
 		/// Thrown when <paramref name="implementation"/> is null. Passing null to mean "put it back to the
@@ -99,10 +163,18 @@ namespace ProphetsWay.Example.Tests
 		/// 	[ModuleInitializer]
 		/// 	internal static void PointTheSuiteAtEntityFramework()
 		/// 	{
-		/// 		TestDataAccessFactory.Use(() =&gt; new ExampleDataAccess(Constants.ConnectionString));
+		/// 		TestDataAccessFactory.Use(
+		/// 			() =&gt; new ExampleDataAccess(Constants.ConnectionString),
+		/// 			StoreCapabilities.TransactionIsolation);
 		/// 	}
 		/// }
 		/// </code>
+		/// <para>
+		/// The second argument is the whole of what a normalized relational Data Access Layer declares: its
+		/// provider gives it isolation, and it does not denormalize a navigation write because it cannot. A
+		/// consumer whose store has the same shape as the in-memory one omits it. Neither choice is a way out of
+		/// a rule - see <see cref="StoreCapabilities"/>.
+		/// </para>
 		/// <para>
 		/// <b>THREAD SAFETY - and why a module initializer is the mechanism named above.</b> xUnit runs test
 		/// collections in parallel. A static seam read by every test but written once is safe only if the write
@@ -145,7 +217,7 @@ namespace ProphetsWay.Example.Tests
 		/// to a method whose value is having exactly one.
 		/// </para>
 		/// </remarks>
-		public static void Use(Func<IExampleDataAccess> implementation)
+		public static void Use(Func<IExampleDataAccess> implementation, StoreCapabilities capabilities = InMemoryStore)
 		{
 			if (implementation == null)
 				throw new ArgumentNullException(nameof(implementation));
@@ -160,6 +232,7 @@ namespace ProphetsWay.Example.Tests
 						"collection fixture is constructed too late, because another collection may already be running in parallel.");
 
 				_implementation = implementation;
+				_capabilities = capabilities;
 			}
 		}
 

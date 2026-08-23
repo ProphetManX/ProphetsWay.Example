@@ -43,16 +43,24 @@ namespace ProphetsWay.Example.Tests
 	/// Layer, and the tests hand it a freshly constructed one.
 	/// </para>
 	/// <para>
-	/// <b>On uncommitted reads.</b> <see cref="ShouldExposeUncommittedWritesToAnotherInstance"/> pins the fact
-	/// that a second instance can see writes this instance has not committed. That is <c>READ UNCOMMITTED</c>,
-	/// and it is an accepted limitation of an in-memory store rather than a rule of <c>IBaseDataAccess</c>, which
-	/// specifies no isolation level at all. It is pinned because this repository is read as documentation: an
-	/// unwritten limitation leaves a reader unable to tell an accepted tradeoff from a bug, and the test states
-	/// which it is in the one place a reader will believe. It is the one test in this class carrying
-	/// <c>Scope=Characterization</c> rather than <c>Scope=Contract</c>, which is why the traits here are on the
-	/// methods rather than on the class. If isolation is ever added, that test fails - which is the correct
-	/// outcome, because a change of isolation level is a change of behaviour a reader must be told about, and
-	/// the failure sends whoever made it back to this comment.
+	/// <b>On uncommitted reads.</b>
+	/// <see cref="ShouldExposeUncommittedWritesToAnotherInstanceOnlyWhereTheStoreDoesNotIsolateThem"/> pins the
+	/// fact that a second instance can see writes this instance has not committed. That is
+	/// <c>READ UNCOMMITTED</c>, and it is an accepted limitation of an in-memory store rather than a rule of
+	/// <c>IBaseDataAccess</c>, which specifies no isolation level at all. It is pinned because this repository is
+	/// read as documentation: an unwritten limitation leaves a reader unable to tell an accepted tradeoff from a
+	/// bug, and the test states which it is in the one place a reader will believe. It is the one test in this
+	/// class carrying <c>Scope=Characterization</c> rather than <c>Scope=Contract</c>, which is why the traits
+	/// here are on the methods rather than on the class.
+	/// </para>
+	/// <para>
+	/// <b>An implementation whose provider does isolate declares
+	/// <see cref="StoreCapabilities.TransactionIsolation"/> and that test takes its other branch</b> - it does
+	/// not merely assert differently, it never performs the uncommitted read, because against a real database
+	/// that read blocks on the writer's lock and ends in a command timeout rather than a failure. What it still
+	/// asserts is the half both shapes owe: the row is gone once the transaction that wrote it is abandoned. The
+	/// reasoning, and the rule that no <c>Scope=Contract</c> assertion may ever read a declared capability, is on
+	/// <see cref="StoreCapabilities"/>.
 	/// </para>
 	/// </remarks>
 	[Collection(TestCollections.SharedStore)]
@@ -579,17 +587,33 @@ namespace ProphetsWay.Example.Tests
 		/// gets its isolation from the provider rather than from this code.
 		/// </summary>
 		/// <remarks>
+		/// <para>
 		/// This is a characterization test of the implementation, not a rule of <c>IBaseDataAccess</c> - that
 		/// contract specifies no isolation level. It is written down because the alternative is a reader finding
-		/// the behaviour on their own and being unable to tell an accepted tradeoff from a defect. A Data Access
-		/// Layer over a store that does provide isolation fails this test <i>correctly</i>, which is what
-		/// <c>Scope=Characterization</c> is for.
+		/// the behaviour on their own and being unable to tell an accepted tradeoff from a defect.
+		/// </para>
+		/// <para>
+		/// <b>A store that does provide isolation declares
+		/// <see cref="StoreCapabilities.TransactionIsolation"/>, and the uncommitted read below is then not
+		/// performed at all.</b> That is the point of putting the branch around the read rather than around the
+		/// assertion: against a real database the read does not fail, it <i>waits</i> - the writing transaction
+		/// holds the row until the rollback two lines further down, which cannot happen until the read returns,
+		/// so the call sits on the lock until the provider's command timeout ends it. One test then costs thirty
+		/// seconds and a full suite costs thirty-two instead of two. A skip or a changed expectation would leave
+		/// every second of that in place.
+		/// </para>
+		/// <para>
+		/// <b>Neither branch is vacuous.</b> What survives the branch is the half both shapes owe - that the row
+		/// is gone once the transaction that wrote it is abandoned - asserted through an instance that had no
+		/// part in writing it, after the rollback, where no lock is held and nothing waits.
+		/// </para>
 		/// </remarks>
 		[Fact]
 		[Trait("Scope", "Characterization")]
-		public void ShouldExposeUncommittedWritesToAnotherInstance()
+		public void ShouldExposeUncommittedWritesToAnotherInstanceOnlyWhereTheStoreDoesNotIsolateThem()
 		{
 			//setup
+			var isolated = TestDataAccessFactory.Capabilities.HasFlag(StoreCapabilities.TransactionIsolation);
 			var dept = NewDepartment;
 
 			_da.TransactionStart();
@@ -598,12 +622,15 @@ namespace ProphetsWay.Example.Tests
 			//act & assert
 			using (var reader = TestDataAccessFactory.Create())
 			{
-				//no isolation: the row is already there, uncommitted
-				reader.Get(new Department { Id = dept.Id }).ShouldNotBeNull();
+				//no isolation: the row is already there, uncommitted. A store that isolates never makes this read -
+				//it would block on the write below until the rollback that cannot happen until it returns.
+				if (!isolated)
+					reader.Get(new Department { Id = dept.Id }).ShouldNotBeNull();
 
 				_da.TransactionRollBack();
 
-				//and it is gone again once the transaction that wrote it is abandoned
+				//and it is gone again once the transaction that wrote it is abandoned - which both shapes owe, and
+				//which is the whole of what an isolated store is asserted on here
 				reader.Get(new Department { Id = dept.Id }).ShouldBeNull();
 			}
 		}
