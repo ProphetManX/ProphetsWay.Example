@@ -37,9 +37,10 @@ Everything in this repository is answerable to that paragraph, and it is why the
 minutes of your time.
 
 **Where the second implementation currently stands.** `ProphetsWay.EFTools` consumes this repository as a
-**git submodule**, so the two cannot drift — only lag. That pointer was advanced on 2026-08-16 to commit
-`d845863`, the tip of `main`, so the contracts it carries are the 3.1.0 ones. EFTools' own adoption of them
-is under way and **not finished**: `ProphetsWay.Example.DataAccess.EF` now references
+**git submodule**, so the two cannot drift — only lag. That pointer was advanced on 2026-08-18 to commit
+`61d9e7d` — one commit past the `3.1.0` tag, on the open 3.1.1 line — so the contracts it carries are
+current. EFTools' own adoption of them is under way and **not finished**:
+`ProphetsWay.Example.DataAccess.EF` now references
 `ProphetsWay.BaseDataAccess` **3.1.0** and compiles, but its `ExampleDataAccess` carries **eleven members
 that throw `NotImplementedException`** — the whole of `IDepartmentDao` and the whole of
 `ICompanyResourceDao`.

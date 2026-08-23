@@ -40,6 +40,8 @@ them, because duplicated rules drift.
 | 12 | [A traceability rule for `Contract`-scoped assertions](#12--a-traceability-rule-for-contract-scoped-assertions) | **Proposed** — the cheap control that would have caught mis-scope 2 |
 | 13 | [A seam letting another repository point this suite at its own implementation](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation) | **Scheduled** — direction approved 2026-08-16 (shape B); **the seam landed the same day and is unverified by any test run** — `TestDataAccessFactory.Use`, read 2026-08-16. Three constraints emerged with it, all answered by the landed shape — see the entry |
 | 14 | [Restoring `DateTimeKind` on a `Department` reached as a navigation property](#14--restoring-datetimekind-on-a-department-reached-as-a-navigation-property) | **Proposed** — 2026-08-16; the gap left open by narrowing `IDepartmentDao` rule 18 to that Data Access Object's own reads |
+| 15 | [`ShouldNotStoreEditsMadeToAUsersNavigationAfterInsertReturned` passes for a prohibited reason](#15--shouldnotstoreeditsmadetoausersnavigationafterinsertreturned-passes-for-a-prohibited-reason) | **Proposed** — 2026-08-19. A `Scope=Contract` test observed green against an implementation **because** it violates the SNAPSHOT rule. Owes a `Test Auditor` pass; the suspected ordering mechanism is **stated, not measured** |
+| 16 | [The IDENTIFIER rule forbids an identifier that the paradigm permits](#16--the-identifier-rule-forbids-an-identifier-that-the-paradigm-permits) | **Proposed** — 2026-08-19. **Latent** — all seven entities are store-keyed, so nothing here can trip it. A contract-wording call for an `Interface Architect`, with three candidate shapes and no answer proposed |
 
 Numbers are permanent. Entries are never renumbered and never removed —
 [purpose-and-scope.md](purpose-and-scope.md) cites entries by number, and a rejected entry is decision history
@@ -1387,3 +1389,146 @@ Until then the answer is: **the boundary is where the mechanism is**, and a read
 timestamp on an included `Department` has found this entry rather than a bug.
 
 
+## 15 — `ShouldNotStoreEditsMadeToAUsersNavigationAfterInsertReturned` passes for a prohibited reason
+
+**Status:** **Proposed** — filed 2026-08-19 by an agent under the shared-capture rule, awaiting `Purpose
+Refiner` triage. **Not an extension of [entry 11](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays)**,
+which concerned a different test in the same file — `ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt`
+— and is `Done`. This is a second, unrelated defect in the same class.
+
+### The finding, and where it came from
+
+[SnapshotDeepCopyTests.cs](../ProphetsWay.Example.Tests/SnapshotDeepCopyTests.cs) line 259 —
+`ShouldNotStoreEditsMadeToAUsersNavigationAfterInsertReturned`, traited **`Scope=Contract`** — was observed
+green against the `ProphetsWay.EFTools` Entity Framework implementation **because that implementation violates
+the SNAPSHOT rule**, not because it honours it. The Entity Framework DAO bases adopt the caller's instance:
+`Insert` is `Dataset.Add(item); SaveChanges();`, leaving the caller's own object tracked. The navigations the
+test edits after the call therefore survive **as a consequence of the adoption**, which is the very thing the
+rule forbids.
+
+Found while writing `ProphetsWay.EFTools`' hand-written `DepartmentDao`; recorded on that side as
+[`ProphetsWay.EFTools` FR 14](../../ProphetsWay.EFTools/docs/feature-requests.md), which is `Scheduled` for
+that repository's v3.0.0. **The defect being fixed there is what exposes this one here.**
+
+### Why it is this repository's problem and not EFTools'
+
+`ProphetsWay.EFTools` fixing its adoption defect does not make this test correct — it makes it **fail for the
+right reason or pass for a different one**, and neither outcome tells anyone the assertion was sound. The
+assertion is written here, carries a `Contract` trait here, and is offered here as part of
+`--filter "Scope=Contract"`, which this repository advertises as *the* conformance gate for a newly written
+Data Access Layer.
+
+**A `Contract` test that can go green against a non-conforming implementation is the exact failure this
+repository exists to prevent.** It is the same class of defect as
+[entry 12](#12--a-traceability-rule-for-contract-scoped-assertions) addresses from the other direction: entry
+12 catches an assertion nothing states; this is an assertion something states, arranged so that a violation
+satisfies it.
+
+### The suspected mechanism — stated as suspicion, not measurement
+
+The test edits `test.User.Company.Name` and `test.User.Job.Name` **after** `Insert` returns, then reads
+through a **second** Data Access Layer instance. Under an in-memory store the edits are invisible to the
+reader because the store holds copies; under an adopting store they are invisible because of **ordering** —
+nothing has flushed the tracked graph between the edit and the read. Inserting one further entity through the
+same Data Access Layer between the edit and the assertion is expected to change the result.
+
+**That expectation has not been run.** It is the reason this is filed as a request rather than reported as a
+measured defect, and the first thing a `Test Auditor` pass should settle.
+
+### What the request is
+
+A **`Test Auditor` pass over this test**, answering three questions:
+
+1. Does the assertion pass against a deliberately adopting implementation? If yes, it is not a `Contract` test
+   as written.
+2. Can the arrangement be strengthened so adoption is detected — an intervening write, an explicit flush, a
+   read that forces materialization — without making the test implementation-aware?
+3. If it cannot be, is the correct outcome to retrait it `Characterization`, or to delete it in favour of an
+   assertion that can discriminate?
+
+**No answer is proposed here.** Judged against [The Bar](#the-bar-everything-here-is-judged-against), the
+question of what this suite *proves* is squarely in scope; the fix is a test-design decision and belongs to
+the agent that owns test files.
+
+### What would close it
+
+The test either discriminating an adopting implementation from a snapshotting one, or no longer carrying a
+`Contract` trait.
+
+## 16 — The IDENTIFIER rule forbids an identifier that the paradigm permits
+
+**Status:** **Proposed** — filed 2026-08-19 by an agent under the shared-capture rule, awaiting `Purpose
+Refiner` triage. **Latent**, not live: no entity in this repository can currently trip it. New entry —
+[entry 14](#14--restoring-datetimekind-on-a-department-reached-as-a-navigation-property) narrowed a different
+rule and shares none of this ground.
+
+### The contradiction, quoted from the artifact
+
+[IExampleDataAccess.cs](../ProphetsWay.Example.DataAccess/IExampleDataAccess.cs) lines 115–117 — the
+IDENTIFIER rule, read 2026-08-19:
+
+> `Insert` assigns the identifier of the row it stored onto the instance the caller passed in, before it
+> returns. **When the call returns, that instance carries an identifier that is not the default value of its
+> type**, and handing an instance carrying that identifier to `Get` retrieves the row just stored.
+
+The clause in bold is **unconditional**. But `0`, `System.Guid.Empty` and `""` are legal stored key values
+under the paradigm — `ProphetsWay.BaseDataAccess` places no floor on an identifier's value, and the same
+`<remarks>` block says at lines 126–132 that **where the identifier comes from is the Data Access Layer's
+business**, including a Data Access Layer that accepts a caller-supplied one.
+
+**So a conforming implementation that legitimately stores a row whose key is `0` violates a rule this
+repository binds every Data Access Object to** — and the failure is stated as an obligation on the
+implementer, who has done nothing wrong.
+
+### Why it is latent rather than live
+
+All seven entities here are **store-keyed**: `Company`, `Job`, `User` and `Department` on `int` identity,
+`Transaction` on `long` identity, `Resource` on a client-generated `System.Guid` that
+[IResourceDao](../ProphetsWay.Example.DataAccess/IDaos/IResourceDao.cs) lines 17–19 explicitly documents as
+arriving real rather than `Guid.Empty`, and `CompanyResource` carrying no identifier at all and named at lines
+148–150 as outside the rule. **No test can currently fail this**, which is precisely why it needs a durable
+record: nothing will report it.
+
+The sharp case is a future implementation over a store that does not generate — a natural key, a
+caller-assigned key, a legacy table with a meaningful `0` row. That implementation reads the gate as a
+promise of conformance and finds a rule it cannot satisfy.
+
+### What the sentence appears to be reaching for, and why the wording overshoots
+
+The rule's real subject is the **write-back**: the caller must read the identifier off its own instance after
+the call rather than before. "Not the default value of its type" is being used as a **proxy for "the store
+assigned something"** — serviceable while every entity is store-keyed, and wrong as a general statement,
+because the proxy is a claim about the *value* where the rule is about the *provenance*.
+
+Note that the same block at lines 136–140 already handles the caller-preassigned case correctly by declaring
+it **unspecified**. The defect is that the unconditional sentence sits above that qualification and does not
+yield to it.
+
+### What the request is — and explicitly what it is not
+
+**Not "delete the sentence."** Removing it costs the rule its teeth: the sentence is what makes the write-back
+checkable at all, and a caller needs *some* statement it can rely on.
+
+The request is a **wording decision** for an `Interface Architect`, on one of three shapes:
+
+1. **Condition it on provenance** — the instance carries the identifier the store settled on, which is not the
+   default of its type **where the store generates identifiers**.
+2. **Condition it on the model** — state it as binding on every Data Access Object in *this* repository, all of
+   which are store-keyed, and say so rather than implying universality.
+3. **Restate it as a `Get` round-trip** — after `Insert`, handing the instance to `Get` retrieves the row just
+   stored. That is the property a caller actually needs, it holds for a `0` key, and it drops the value claim
+   entirely.
+
+Shape 3 is the coordinator's read of the cleanest, but this is a contract-wording call and is not being made
+here.
+
+### One consequence worth weighing during triage
+
+Whichever shape wins, this is a **change to a stated contract rule**, and `--filter "Scope=Contract"` is
+offered to third parties as a conformance gate. Per the shared block, a rule change of this kind wants a
+`CHANGELOG.md` entry from `Changelog Author` even though no test changes and no behaviour moves.
+
+### What would close it
+
+The IDENTIFIER rule stating a condition a Data Access Layer over a `0`-keyed row can satisfy, or explicitly
+scoping itself to store-generated identifiers.

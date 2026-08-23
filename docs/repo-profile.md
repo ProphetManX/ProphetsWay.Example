@@ -359,7 +359,7 @@ that corrected this document.
 | Test-suite size and legs | **WAS STALE — corrected** | The README now says two legs, `net48` and `net10.0`, and **164 tests / 328 executions** |
 | Data access layer and test project target frameworks | **Accurate** | README now states `netstandard2.0` / `net10.0` for the two DAL projects and `net48` / `net10.0` for the tests — matches all three `.csproj` |
 | `ProphetsWay.BaseDataAccess` reference version | **Accurate** | README now says **3.1.0**; matches the single `PackageReference` |
-| **"`ProphetsWay.EFTools` carries an Entity Framework implementation of the very same `IExampleDataAccess` contract, and the tests do not change to accommodate it."** | **Now qualified — accurate as written** | The README states that the pointer was advanced to `d845863` (the 3.1.0 tree) and that the EF implementation is still on `ProphetsWay.BaseDataAccess` 2.5.0, so the demonstration is pending. Verified against `ProphetsWay.EFTools/.git/modules/ProphetsWay.Example/HEAD` and `ProphetsWay.Example.DataAccess.EF.csproj`. The underlying coordination gap is unchanged: [FR 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) |
+| **"`ProphetsWay.EFTools` carries an Entity Framework implementation of the very same `IExampleDataAccess` contract, and the tests do not change to accommodate it."** | **Now qualified — accurate as written** | The README states that the pointer was advanced to `d845863` (the 3.1.0 tree) and that the EF implementation is still on `ProphetsWay.BaseDataAccess` 2.5.0, so the demonstration is pending. **Both halves of that evidence are stale as of 2026-08-20 and the README carries the same two errors.** The pointer is **`61d9e7d`**, one commit past the `3.1.0` tag (`3.1.0-1-g61d9e7d`, the 2026-08-18 merge of PR #21 that opened the untagged 3.1.1 line) — read from `ProphetsWay.EFTools/.git/modules/ProphetsWay.Example/HEAD`. And both EFTools `.csproj` files reference `ProphetsWay.BaseDataAccess` **3.1.0**, not 2.5.0 — read from `ProphetsWay.EFTools.csproj` line 53 and `ProphetsWay.Example.DataAccess.EF.csproj` line 13. **The claim is still pending, for a narrower reason:** `ProphetsWay.EFTools.Tests` now adapts 13 of this repo's 15 test classes onto the EF DAL via `TestDataAccessFactory.Use`, and the last measured run (2026-08-18) was **151 tests, 123 passed, 28 failed**. The underlying coordination gap is unchanged: [FR 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) |
 | Badge points at `branchName=main` | **Correct** | 3.0.0 is merged; the badge now reflects this tree |
 
 `CHANGELOG.md` has **no v3.1.0 entry** — its most recent heading is `v3.0.0`. That file belongs to
@@ -371,15 +371,19 @@ known outstanding item, not as drift.
 Ordered by consequence. Anything with an `FR n` reference is triaged in
 [docs/feature-requests.md](feature-requests.md) and should not be re-litigated here.
 
-1. **The repo's headline claim is still pending, but the reason has moved.** `ProphetsWay.EFTools`
-   pins this repo as a submodule, and **the pointer was advanced on 2026-08-16 to `d845863`** — the
-   tip of `main`, i.e. the 3.1.0 tree — so the contracts it carries are current. What has not landed
-   is EFTools' own adoption of them: both
-   `ProphetsWay.EFTools/ProphetsWay.EFTools/ProphetsWay.EFTools.csproj` and
+1. **The repo's headline claim is still pending, and the reason has moved again — corrected 2026-08-20.**
+   `ProphetsWay.EFTools` pins this repo as a submodule, and **the pointer is at `61d9e7d`** — one commit
+   past the `3.1.0` tag, on the untagged 3.1.1 line, advanced 2026-08-18. The text that stood here named
+   `d845863` and said EFTools' two `.csproj` files "still reference `ProphetsWay.BaseDataAccess`
+   **2.5.0**"; **both are false** — both read **3.1.0**, verified by opening
+   `ProphetsWay.EFTools/ProphetsWay.EFTools/ProphetsWay.EFTools.csproj` (line 53) and
    `ProphetsWay.EFTools/ProphetsWay.Example.DataAccess.EF/ProphetsWay.Example.DataAccess.EF.csproj`
-   still reference `ProphetsWay.BaseDataAccess` **2.5.0**. **This remains a coordination requirement,
-   not duplication** — a submodule cannot drift, only lag. Never edit files under
-   `ProphetsWay.EFTools/ProphetsWay.Example/`; edit here and advance the pointer.
+   (line 13). **What has actually not landed is a green run.** `TestDataAccessFactory.Use` — added in the
+   very commit the pointer now sits on — lets `ProphetsWay.EFTools.Tests` adapt 13 of this repo's 15 test
+   classes onto the Entity Framework DAL, and it does: last measured 2026-08-18, **151 tests, 123 passed,
+   28 failed**, the failures dominated by a `CompanyResourceDao` that does not exist on that side.
+   **This remains a coordination requirement, not duplication** — a submodule cannot drift, only lag.
+   Never edit files under `ProphetsWay.EFTools/ProphetsWay.Example/`; edit here and advance the pointer.
    [FR 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts), whose
    stated status of `Proposed` now covers only the remainder of the work — its first step has landed.
 
