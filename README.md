@@ -4,10 +4,10 @@
 Build Status:  
 [![Build Status](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_apis/build/status/ProphetManX.ProphetsWay.Example?repoName=ProphetManX%2FProphetsWay.Example&branchName=main)](https://dev.azure.com/ProphetsWay/ProphetsWay%20GitHub%20Projects/_build/latest?definitionId=24&repoName=ProphetManX%2FProphetsWay.Example&branchName=main)
 
-_This document describes **v3.1.1**, which is **not tagged yet** — the owner holds the tag until the
-Entity Framework implementation in `ProphetsWay.EFTools` is green against these contracts. If you change
-behavior, contracts, target frameworks, or test counts, update this marker in the same change — it is how
-anyone can tell whether the README still matches the tree._
+_This document describes **v3.1.1**, which is **not tagged yet**. The condition that held the tag — a green
+run of this suite against the Entity Framework implementation in `ProphetsWay.EFTools` — has been met; what
+remains is release sequencing. If you change behavior, contracts, target frameworks, or test counts, update
+this marker in the same change — it is how anyone can tell whether the README still matches the tree._
 
 ---
 
@@ -36,21 +36,25 @@ The argument is one paragraph long:
 Everything in this repository is answerable to that paragraph, and it is why the repository is worth twenty
 minutes of your time.
 
-**Where the second implementation currently stands.** `ProphetsWay.EFTools` consumes this repository as a
-**git submodule**, so the two cannot drift — only lag. That pointer was advanced on 2026-08-18 to commit
-`61d9e7d` — one commit past the `3.1.0` tag, on the open 3.1.1 line — so the contracts it carries are
-current. EFTools' own adoption of them is under way and **not finished**:
-`ProphetsWay.Example.DataAccess.EF` now references
-`ProphetsWay.BaseDataAccess` **3.1.0** and compiles, but its `ExampleDataAccess` carries **eleven members
-that throw `NotImplementedException`** — the whole of `IDepartmentDao` and the whole of
-`ICompanyResourceDao`.
+**Read that paragraph as fact, not as ambition — the second implementation exists and the suite is green
+against it.** `ProphetsWay.EFTools` consumes this repository as a **git submodule**, so the two cannot
+drift, only lag; the pointer is at `f93f0a4`, which is this repository's own tip — four commits past the
+`3.1.0` tag, on the open 3.1.1 line. Against that pointer, `ProphetsWay.Example.DataAccess.EF` implements
+the same contracts on **Entity Framework Core 10 over SQL Server**, sharing none of the in-memory
+implementation's code, and referencing `ProphetsWay.BaseDataAccess` **3.2.0** exactly as this repository
+does. EFTools' full suite runs **270 tests, 270 passed, 0 failed**, and its portable subset
+(`--filter "Scope=Contract|Guard=Seam"`) **245 / 245 / 0** in about two seconds. **144 of those 270 cases
+are the tests in this repository**, running unmodified against a database.
 
-**So read the paragraph above as pending, not as fact.** The same suite has not yet been run green against
-the Entity Framework implementation, and this repository will not be tagged until it has. That work lives
-in the EFTools repository, tracked here as
-[FR 5](docs/feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts). What has
-changed in 3.1.1 is that EFTools can now *run* this suite without editing a file it is forbidden to edit —
-see [Running this suite against your own DAL](#running-this-suite-against-your-own-dal).
+EFTools writes no test to achieve that. It writes one file — a `[ModuleInitializer]` calling
+`TestDataAccessFactory.Use` — plus one empty derived class per upstream test class, present only so xUnit
+discovers the suite inside its own assembly. No assertion is overridden and no test is edited, which is
+just as well: EFTools is forbidden to edit a file underneath the submodule. See
+[Running this suite against your own DAL](#running-this-suite-against-your-own-dal).
+
+Tracked here as
+[FR 5](docs/feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts), closed
+**Done** on 2026-08-23.
 
 **Highlights**
 
@@ -131,12 +135,13 @@ private static Func<IExampleDataAccess> _implementation = () => new MyEntityFram
 **If you are consuming this repository from another one, call `Use`.** `ProphetsWay.EFTools` holds this
 repository as a pinned git submodule and is under a standing instruction never to edit a file underneath it —
 so the one repository that most wants to run this suite against its own DAL is the one repository that cannot
-change that line. `TestDataAccessFactory.Use(Func<IExampleDataAccess>)` is the way in, and one file in your
-own test assembly is the whole of what you write. No test class is derived from, no test is edited, and no
-adapter exists:
+change that line. `TestDataAccessFactory.Use(Func<IExampleDataAccess>, StoreCapabilities)` is the way in, and
+one file in your own test assembly is the whole of what you write. No test is edited and no assertion is
+overridden:
 
-> **Illustrative** — not currently present in the repo. It belongs in the *consuming* repository, and the
-> canonical copy of it is the `USAGE` sketch on `TestDataAccessFactory.Use`.
+> **Illustrative** — not currently present in this repo. It belongs in the *consuming* repository, and the
+> canonical copy of it is the `USAGE` sketch on `TestDataAccessFactory.Use`. `ProphetsWay.EFTools.Tests`
+> runs exactly this shape.
 
 ```csharp
 using System.Runtime.CompilerServices;
@@ -147,10 +152,35 @@ internal static class TestSeam
 	[ModuleInitializer]
 	internal static void PointTheSuiteAtEntityFramework()
 	{
-		TestDataAccessFactory.Use(() => new ExampleDataAccess(Constants.ConnectionString));
+		TestDataAccessFactory.Use(
+			() => new ExampleDataAccess(Constants.ConnectionString),
+			StoreCapabilities.TransactionIsolation);
 	}
 }
 ```
+
+**The second argument declares what your store is structurally able to do — not which store it is.** Two
+tests in this suite read it and nothing else does; a normalized relational DAL passes
+`StoreCapabilities.TransactionIsolation` and that is the whole of its declaration. It defaults to this
+repository's own shape, so nothing here passes it. Read
+[Why the filter, and what it leaves out](#why-the-filter-and-what-it-leaves-out) before choosing a value —
+the flags invert if you guess at them.
+
+**You also write one empty class per test class you want run.** xUnit discovers tests in the assembly it is
+handed, not in the assemblies that one references, so the derived class is what makes an upstream test
+visible to your runner:
+
+> **Illustrative** — not currently present in this repo. `ProphetsWay.EFTools.Tests` carries thirteen of
+> these, one per adapted class.
+
+```csharp
+public class EFJobDaoTests : JobDaoTests
+{
+}
+```
+
+That is the whole of an adapter — a name, a base class, and no body. The implementation is chosen once, in
+the module initializer above, and never here.
 
 A delegate is taken rather than an instance so that construction inputs the default does not need — a
 provider, a connection string, a context factory — can be closed over there and supplied nowhere else.
@@ -199,20 +229,21 @@ Every test carries a `Scope` trait saying who it binds.
 | `Scope` | Tests | Who has to pass it |
 |---|---|---|
 | `Contract` | 139 | Every implementation of `IExampleDataAccess`. These are the rules the interfaces state. |
-| `Characterization` | 5 | This implementation only. Another DAL may legitimately fail them. |
+| `Characterization` | 5 | This implementation only — three are its own choices, and two adapt to the shape of store you declare. |
 | `Dispatcher` | 20 | Nobody's DAL. They pin the reflection convention in `ProphetsWay.BaseDataAccess` itself. |
 
-**The honest answer to "will all 164 of these pass against my implementation?" is: all but five, and here is
-exactly which five.**
+**The honest answer to "will all 164 of these pass against my implementation?" is: the 139 must, the 20 are
+not about you at all, and of the five that are left, three are this implementation's habits and two adapt to
+the shape of your store.** Here is exactly which.
+
+**Three are habits you are free to fail.** Each pins a choice the interface deliberately declines to make,
+so an implementation that chose differently is exactly as conforming:
 
 - `CompanyDaoTests.ShouldGetCustomCompanyFunction` — `ICompanyDao.GetCustomCompanyFunction(int)` stands in
   for whatever query your domain adds beyond the surface it inherits, and the interface deliberately says
   nothing about what its argument means. This implementation reads it as a position in the set and wraps
   round the end, so asking for 100 against three stored companies returns one of them. An implementation
   that read it as an identifier would return `null` and be exactly as conforming.
-- `DataAccessTransactionTests.ShouldExposeUncommittedWritesToAnotherInstance` — pins `READ UNCOMMITTED`, the
-  isolation this in-memory store does not provide. `IBaseDataAccess` specifies no isolation level, so a DAL
-  that gets isolation from a real database **fails this test correctly**.
 - `UserDaoTests.ShouldGetCustomFunctionality` — asserts the literal this implementation stamps onto
   `User.Whatever`. `IUserDao`'s `<remarks>` decline in as many words to say what `CustomUserFunctionality`
   does or what it writes back, so an implementation that wrote nothing, or wrote something else, is equally
@@ -222,18 +253,69 @@ exactly which five.**
   obligation on every implementer that no rule makes. The `Contract` half of that trio is
   `ShouldNotAdoptTheInstanceHandedToCustomUserFunctionality`, which pins the one thing `IUserDao` does
   state: the instance is read rather than adopted.
-- `SnapshotDeepCopyTests.ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt` — requires
-  an edit made through `User.Company` to read back through that navigation property while the `Companies` row
-  still carries the old name. Only a store that denormalizes can do both at once; a normalized relational
-  store holds one row and reads it back through a join. Its sibling
-  `ShouldReadEverythingAsItWasBeforeARolledBackTransactionThatEditedANavigationProperty` is the `Contract`
-  half.
+
+#### The two that adapt: declaring what your store can structurally do
+
+The remaining two pin behavior that follows from the **shape of a store's rows**, and the in-memory shape and
+the relational shape make opposite things true — not "not yet true", but structurally impossible for one or
+the other. Left unqualified they handed every correct relational DAL a standing two-test red, and a suite
+that is permanently two-red is a suite whose red has stopped meaning anything.
+
+So an implementation declares what its store can do, in the same `Use` call that names it:
+
+| Flag | What declaring it says |
+|---|---|
+| `DenormalizedNavigationWrites` | An `Update` stores its own copy of the navigation nodes it was handed, so an entity's view of a company and the `Companies` row are physically separate data and may legitimately disagree |
+| `TransactionIsolation` | A write made inside an open transaction is invisible to another DAL instance until that transaction commits |
+| `None` | Neither of the above |
+
+The default is this repository's own shape — `DenormalizedNavigationWrites`, named
+`TestDataAccessFactory.InMemoryStore` — so nothing here declares anything, and the visible unconditional line
+every test takes stays exactly as short as it was. The two tests that read the declaration are the two that
+branch on it:
+
+- `DataAccessTransactionTests.ShouldExposeUncommittedWritesToAnotherInstanceOnlyWhereTheStoreDoesNotIsolateThem`
+  — without `TransactionIsolation`, an uncommitted row is readable from a second instance, which is what an
+  in-memory store with nowhere else to put it does. With the flag, that read is **not performed at all**:
+  against an isolating store it does not fail, it *blocks* on the open write until the provider's command
+  timeout, so the branch is around the read rather than around the assertion. What survives the branch is the
+  half both shapes owe — that the row is gone once the transaction that wrote it is abandoned.
+- `SnapshotDeepCopyTests.ShouldReadANavigationPropertyEditBackOnlyWhereTheStoreDenormalizesTheWrite` — with
+  `DenormalizedNavigationWrites`, an edit made through `User.Company` reads back through that navigation
+  property while the `Companies` row still carries the committed name. Without it, the **committed** name is
+  what must read back.
+
+**Three things here invert if you restate them from memory.**
+
+- **These are positive capabilities on two independent axes, not a label for a kind of store.** A document
+  store denormalizes *and* isolates; the store here does the first and not the second; a relational store
+  does the second and not the first. Collapsing them into one `Relational`/`InMemory` value would force a
+  fourth kind of store to pick the nearest lie.
+- **The absence of a flag is itself a declaration, and the branch it selects is the stronger of the two.** A
+  normalized store that does not declare `DenormalizedNavigationWrites` must read the *committed* company
+  name back — which proves the `Update` did not cascade into the `Company`, `Job` and `Department` rows the
+  caller never named, from inside the transaction that submitted it, where nothing else in this suite looks.
+  Adding the flag to make a relational failure go away asserts an in-memory outcome against a relational
+  store, and fails.
+- **No `Scope=Contract` assertion reads the enum, and none may be made to.** An obligation a caller can
+  decline is not an obligation. What a declaration changes is *which* outcome a characterization test
+  asserts — never *whether* it asserts. Neither branch of either test is vacuous.
+
+The one failure this cannot catch is a consumer who forgets to declare: they see the two failures they would
+have seen anyway, which is no worse than before, and nothing in this assembly can look at a DAL and infer its
+row shape. The full reasoning, and the limits on what a declaration may ever be used to excuse, are in the
+`<remarks>` on [StoreCapabilities](ProphetsWay.Example.Tests/StoreCapabilities.cs) and in
+[FR 17](docs/feature-requests.md#17--storecapabilities--letting-an-implementation-declare-what-its-store-can-structurally-do).
+Read them there — a copy in a README drifts.
+
+#### And the twenty that are nobody's
 
 The `Dispatcher` tests live in `ConventionShowcase/` and construct their own deliberately mis-wired DALs.
 They never touch the factory, so swapping the suite onto another implementation must leave them exactly as
-they are — they are tests to read, not a target to hit.
+they are — they are tests to read, not a target to hit. They are outside the capability mechanism for the
+same reason: they build their own DALs, so `Use` does not and must not change what they exercise.
 
-That split is the point. A suite claiming total portability would be hiding the five places a different
+That split is the point. A suite claiming total portability would be hiding the places a different
 implementation is allowed to differ, and hiding them is how a paradigm gets found out.
 
 ---
@@ -266,8 +348,8 @@ alongside `IBaseDataAccess`, and that single interface is what business logic in
 An in-memory implementation, written so that this DAL — and any implementation of it — can be unit tested
 without a database, locally and in a build pipeline alike.
 [ProphetsWay.EFTools](https://github.com/ProphetManX/ProphetsWay.EFTools) implements the same contract on
-Entity Framework and reuses these tests — its adoption of the 3.x contracts is in progress and not yet
-green. See [Where the second implementation currently stands](#why-this-repository-exists).
+Entity Framework Core and reuses these tests, green. See
+[Why this repository exists](#why-this-repository-exists).
 
 `DataStore` is a static class holding one `StoreTable` per entity, standing in for the database itself
 rather than for a connection to it. Every write passes through it and hands an undo entry to a
@@ -317,7 +399,7 @@ Install-Package ProphetsWay.BaseDataAccess
 ```
 
 Targets: the two data access layer projects build for `netstandard2.0` and `net10.0`; the test project runs
-on `net48` and `net10.0`. The solution references the released `ProphetsWay.BaseDataAccess` **3.1.0** as a
+on `net48` and `net10.0`. The solution references the released `ProphetsWay.BaseDataAccess` **3.2.0** as a
 NuGet `PackageReference` — never as a project reference, so the contracts you read here are the ones a
 consumer installs.
 
@@ -571,9 +653,11 @@ open.
 
 **One accepted limitation:** another DAL instance can read writes this one has not committed — the
 equivalent of `READ UNCOMMITTED`. That is the price of an in-memory store with nowhere to put an
-uncommitted row; a database-backed implementation gets isolation from its provider. A test pins it — traited
-`Scope=Characterization`, because a DAL that does provide isolation fails it correctly — so a reader can
-tell an accepted tradeoff from a defect.
+uncommitted row; a database-backed implementation gets isolation from its provider and says so by declaring
+`StoreCapabilities.TransactionIsolation`, which makes the test that pins this assert the other outcome
+rather than fail forever. It is traited `Scope=Characterization` either way, so a reader can tell an accepted
+tradeoff from a defect — see
+[The two that adapt](#the-two-that-adapt-declaring-what-your-store-can-structurally-do).
 
 ### Disposal
 

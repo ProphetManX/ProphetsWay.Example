@@ -15,8 +15,11 @@ caller was previously promised.
 ```TestDataAccessFactory``` gained ```Use```:
 
 ```c#
-	public static void Use(Func<IExampleDataAccess> implementation)
+	public static void Use(Func<IExampleDataAccess> implementation, StoreCapabilities capabilities = InMemoryStore)
 ```
+
+The first argument is the subject of this section; the second is optional, defaults to what this repository's 
+own Data Access Layer is, and is the subject of the next one.
 
 Since 3.0.0 the factory has been the only place in the test project that names an implementation, and the 
 promise attached to it was that changing its one ```return``` repoints the whole suite.  That promise held for 
@@ -34,7 +37,9 @@ A consuming assembly writes one file and derives from nothing:
 		[ModuleInitializer]
 		internal static void PointTheSuiteAtEntityFramework()
 		{
-			TestDataAccessFactory.Use(() => new ExampleDataAccess(Constants.ConnectionString));
+			TestDataAccessFactory.Use(
+				() => new ExampleDataAccess(Constants.ConnectionString),
+				StoreCapabilities.TransactionIsolation);
 		}
 	}
 ```
@@ -60,6 +65,83 @@ nothing consults an environment variable or a runner parameter, and the mis-wire
 ```ConventionShowcase``` construct their own and are untouched by the seam — they are the subject of their 
 tests rather than the implementation under test.  Reasoning and the constraints that shaped the mechanism are 
 in ```docs/feature-requests.md``` entry 13.
+
+### The second thing a consuming repository declares is the shape of its store
+```Use``` takes a second argument, and a new ```[Flags]``` enum is what it takes:
+
+```c#
+	[Flags]
+	public enum StoreCapabilities
+	{
+		None = 0,
+		DenormalizedNavigationWrites = 1,
+		TransactionIsolation = 2
+	}
+```
+
+Almost everything in this suite is a rule every conforming Data Access Layer owes — that is what 
+```Scope=Contract``` means, and none of it is negotiable.  Two tests are not rules but observations, pinned so 
+that a reader can tell an accepted tradeoff from a defect, and both of those are true of the in-memory Data 
+Access Layer and **cannot** be true of a normalized relational one.  Not "are not yet", but cannot: the row 
+shape that makes one of them true is the row shape that makes the other impossible.  Left unqualified, the pair 
+handed every correct relational implementation a permanent two-test failure — and a suite that is permanently 
+two-red is a suite whose red has stopped meaning anything.  One of the two was worse than merely red.  It read 
+a row written inside another instance's open transaction, which against a store that isolates cannot return 
+until that transaction ends, and the line that ends it is the one after the read — so it sat on a SQL Server 
+lock for thirty seconds and then died on the provider's command timeout.
+
+**These are positive capabilities on two independent axes, not a label naming a kind of store**, and reading 
+them as a label inverts what they say.  A normalized relational Data Access Layer declares 
+```TransactionIsolation``` and that is the whole of its declaration: the *absence* of 
+```DenormalizedNavigationWrites``` is itself a positive statement — that the store holds one row read back 
+through a join and physically cannot hold a second, denormalized copy of a navigation node.  The branch that 
+absence selects is the **stronger** of the two assertions.  It proves an ```Update``` did not cascade into the 
+```Company```, ```Job``` and ```Department``` rows the caller never named, checked from inside the transaction 
+that submitted the edit, where nothing else in this suite looks.  A document store denormalizes *and* isolates 
+and declares both; collapsing the two axes into a single ```Relational``` or ```InMemory``` value would force a 
+third store to pick the nearest lie, and adding an axis later is a new flag that leaves every existing 
+declaration untouched.
+
+**No ```Scope=Contract``` assertion reads the enum, and none may be made to.**  A contract test is an 
+obligation on every implementation, and an obligation a caller can decline is not an obligation.  What a 
+declaration changes is *which* outcome a characterization test asserts, never *whether* it asserts — both 
+branches of both tests assert something real.  The two readers were renamed to say what they assert rather than 
+what their setup does: ```ShouldReadANavigationPropertyEditBackOnlyWhereTheStoreDenormalizesTheWrite``` in 
+```SnapshotDeepCopyTests```, and 
+```ShouldExposeUncommittedWritesToAnotherInstanceOnlyWhereTheStoreDoesNotIsolateThem``` in 
+```DataAccessTransactionTests```.  In the second, the branch is around the **read** and not around the 
+```ShouldBe```, because skipping only the assertion would have left every one of those thirty seconds in place; 
+what survives the branch is the half both shapes owe, that the row is gone once the transaction that wrote it 
+is abandoned.
+
+**This repository declares nothing, and its own suite is unchanged.** The default is 
+```TestDataAccessFactory.InMemoryStore```, a ```public const``` that names what 
+```ProphetsWay.Example.DataAccess.NoDB``` actually is rather than spelling out which flags it happens to set — 
+so no call site here moved, no test was added, and the counts in the section below stand at 164 with the 
+partition at 139 / 5 / 20.  **If you already wrote a ```Use``` call against the one-parameter form, it still 
+compiles.**  The parameter is optional and this is a source-compatible addition, not a signature to chase.  
+What a relational implementation does is add one argument:
+
+```c#
+	TestDataAccessFactory.Use(
+		() => new ExampleDataAccess(Constants.ConnectionString),
+		StoreCapabilities.TransactionIsolation);
+```
+
+Omitting it when it applies is not a failure the seam can detect — nothing in this assembly can look at a Data 
+Access Layer and infer its row shape — so a consumer who forgets sees exactly the two failures they would have 
+seen anyway, which is no worse than before.  ```Capabilities``` is read under the same lock as ```Create```, at 
+execution time from inside a test, and deliberately not at discovery time through a ```Skip``` on a custom 
+```FactAttribute```: a ```[ModuleInitializer]``` runs before code in its own module executes, not before 
+another assembly reflects over its metadata, so a discovery-time read may see the default and quietly do 
+nothing.  A mechanism that fails silently is worse than the failure it was added to remove.
+
+The effect is measured downstream, which is where it was needed.  ```ProphetsWay.EFTools``` runs this suite 
+against its own Entity Framework Data Access Layer; declaring ```TransactionIsolation``` took that run from 
+**270 tests, 268 passed, 2 failed in roughly thirty-two seconds** to **270 passed, 0 failed in about two**.  
+This repository's own run, which declares nothing and whose tests are unchanged, measured 5.78 seconds against 
+7.32 before.  The reasoning, and the limits on what the enum may ever be used to excuse, are in the XML 
+documentation on ```StoreCapabilities``` itself and in ```docs/feature-requests.md``` entry 17.
 
 ### Two contract rules that now bind every Data Access Object
 ```IExampleDataAccess``` gained an **identifier rule** and a **row count rule**, bringing it to four 

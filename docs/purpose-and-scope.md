@@ -15,9 +15,52 @@ here by number._
 | --- | --- |
 | `ProphetsWay.Example.DataAccess`, `.DataAccess.NoDB` | `netstandard2.0;net10.0` |
 | `ProphetsWay.Example.Tests` | `net48;net10.0` |
-| `ProphetsWay.BaseDataAccess` reference | `3.1.0` (NuGet `PackageReference`) |
+| `ProphetsWay.BaseDataAccess` reference | **`3.2.0`** (NuGet `PackageReference`) — **corrected 2026-08-23**; this row read `3.1.0`. Verified by opening `ProphetsWay.Example.DataAccess.csproj`, line 29 |
 | Suite | 164 tests × 2 legs = **328 executions** |
 | Version | 3.1.1 in [app-variables.yml](../app-variables.yml) |
+
+> ### Currency refresh — 2026-08-23
+>
+> **Two entries closed and one was filed since this document last moved, and one of the closures is the one
+> this repository exists for.**
+>
+> - **[FR 5](feature-requests.md) — `Done`.** `ProphetsWay.EFTools` runs this suite against
+>   `ProphetsWay.Example.DataAccess.EF` at **270 total / 270 passed / 0 failed**, conformance gate
+>   **245 / 245 / 0**. **The argument this repository exists to make is no longer pending — it is
+>   demonstrated.** See the amendment under [The Drift](#the-drift), where finding 1 is struck.
+> - **[FR 13](feature-requests.md) — `Done`.** `TestDataAccessFactory.Use` is load-bearing in
+>   `ProphetsWay.EFTools.Tests`, drives thirteen adapted classes, and is guarded by `TestSeamTests`.
+> - **[FR 17](feature-requests.md) — filed `Done`, in that order**: `StoreCapabilities` was built and then
+>   recorded, because it is a durable decision about what `Characterization` means rather than something that
+>   needed approval. **Its scope verdict is below** — it is the sharpest scope question this repository has
+>   faced, and the answer is *in scope, and it does not widen the purpose*.
+>
+> **Nothing needs to be built here within a week.** The only time-critical item in the family was
+> `ProphetsWay.EFTools`' D12 release note, and it has landed. What remains for this repository is **release
+> sequencing, not correctness** — D11 step 3 wants the EFTools submodule pointer on a *tag* of this
+> repository, and it currently sits on the untagged `3.1.1` line at `f93f0a4`.
+>
+> **The suite total did not move, and that is the correct outcome.** `f93f0a4` added a *mechanism*, not a
+> test: this repository declares nothing, because the default is its own shape.
+
+### Scope Verdict — `StoreCapabilities`, letting an implementation declare what its store can do
+
+**Verdict:** **In scope — and it does not widen the purpose.**
+**Purpose it is measured against:** the one-sentence purpose below — a worked, executable demonstration that
+the same business logic and the same tests run unchanged against completely different DAL implementations.
+**Because:** the enum exists so that **more** of the suite can run unchanged against a second implementation,
+not less. Two `Characterization` tests encoded physical properties of an in-memory store — denormalized
+navigation writes, and the absence of transaction isolation — which a normalized relational store cannot
+reproduce and never should. Before the mechanism, those two failed forever against any real database and there
+was nothing to distinguish "this implementation is wrong" from "this store is different." The mechanism draws
+that line explicitly.
+**The line that keeps it in scope, and it is a hard one:** **no `Scope=Contract` assertion reads the enum, and
+none may be made to.** A contract obligation a caller can decline is not an obligation. The moment a `Contract`
+test branches on a declared capability, the conformance gate stops being a gate and this verdict is void.
+**If it proceeds further:** nothing changes in the purpose sentence, the README description or the package
+description — there is no package. What *would* need re-examining is a proposal to add a third flag, since each
+one is a new axis on which two conforming implementations are permitted to differ, and enough of those turn a
+specification into a questionnaire.
 
 ---
 
@@ -92,14 +135,18 @@ say the same thing. The four findings below are drift of a different kind — be
 current state of the tree, between the specification and what the suite actually demands, and between the
 headline claim and the state of a sibling repository.
 
-1. **The README's central claim is currently false in practice, through no fault of this repository.**
+1. ~~**The README's central claim is currently false in practice, through no fault of this repository.**~~
+   **CLOSED 2026-08-23 — the claim is true, and this finding is history.** It read that
    "`ProphetsWay.EFTools` carries an Entity Framework implementation of the very same `IExampleDataAccess`
-   contract, and the tests do not change to accommodate it" is true of `main` at the 3.0.0 branch point and is
-   *not* true today: EFTools consumes this repository as a **git submodule pinned** to that older commit, so
-   `ProphetsWay.Example.DataAccess.EF` implements a contract that no longer exists here — no `Dispose`, no
-   `Department`, no `CompanyResource`, no snapshot rule. This is a **coordination requirement, not a
-   duplication problem**, and it is the highest-consequence open fact about the repository. Captured as
-   [feature request 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts).
+   contract, and the tests do not change to accommodate it" was true of the 3.0.0 branch point and not of the
+   tree, because the submodule was pinned to an older commit and
+   `ProphetsWay.Example.DataAccess.EF` implemented a contract that no longer existed here. **All of that has
+   been executed.** The pointer is at **`f93f0a4`**, this repository's own tip; `Dispose`, `Department` and
+   `CompanyResource` are all implemented; and the suite runs against that DAL at **270 / 270 / 0**.
+   [FR 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) is `Done`.
+   **It was, as this finding said, the highest-consequence open fact about the repository — and it closed the
+   way the finding predicted, as a coordination job rather than a duplication problem.** What is left is
+   **release sequencing**: D11 step 3 wants that pointer on a *tag*, and it sits on the untagged `3.1.1` line.
 
 2. **The demonstrated half of `Get<T>(null)` is presented as though it were the whole rule.** `IBaseDataAccess`
    specifies a deliberate split — `ArgumentException` where the identifier is a non-nullable value type,
@@ -109,7 +156,11 @@ headline claim and the state of a sibling repository.
    drift. Captured as [feature request 1](feature-requests.md#1--demonstrate-the-accepting-half-of-gettnull).
 
 3. ~~**The README still describes a tree that no longer exists**~~ — **fixed since this was written**,
-   re-verified against `README.md` on 2026-08-16. `CHANGELOG.md` still has no `v3.1.0` entry.
+   re-verified against `README.md` on 2026-08-16. ~~`CHANGELOG.md` still has no `v3.1.0` entry.~~
+   **That clause is FALSE as of 2026-08-23 and must not be restated.** `CHANGELOG.md` was opened and its
+   `^# v` headings read directly: **`# v3.1.1 — not yet released` at line 1, `# v3.1.0` at line 264,
+   `# v3.0.0` at line 329.** Both entries exist; the `v3.1.1` one is open by design because the owner will not
+   tag the line until `ProphetsWay.EFTools` has what it needs.
    `AGENTS.md` and [docs/repo-profile.md](repo-profile.md) carried the same drift and were corrected
    during 3.1.0 — see [Stale Claims — Corrected in 3.1.0](#stale-claims--corrected-in-310) and the
    [Still Open](#still-open--owned-by-other-agents) table beneath it.
@@ -318,14 +369,14 @@ and the status. Nothing here is applied by this document.
 
 | # | Change | Rationale | Effort | Breaking? |
 | --- | --- | --- | --- | --- |
-| 1 | Advance the EFTools submodule pointer and update `ProphetsWay.Example.DataAccess.EF` onto the 3.x contracts — [FR 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) | The README's headline claim is false until this happens, and the headline claim is the whole product | High — another repository, seven DAOs, two new entities | No, to this repo |
+| 1 | ~~Advance the EFTools submodule pointer and update `ProphetsWay.Example.DataAccess.EF` onto the 3.x contracts~~ — **Done 2026-08-23**, [FR 5](feature-requests.md#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) | The README's headline claim is false until this happens, and the headline claim is the whole product. **It happened.** Pointer at `f93f0a4`, seven DAOs on the 3.x families, both new entities mapped, suite **270 / 270 / 0** with the conformance gate at **245 / 245 / 0**. **The "151 / 123 / 28" and "`CompanyResourceDao` does not exist" lines are dead.** What remains is release sequencing — D11 step 3 wants the pointer on a *tag* | High — another repository, seven DAOs, two new entities | No, to this repo |
 | 2 | Demonstrate the accepting half of `Get<T>(null)` in `ConventionShowcase/` — [FR 1](feature-requests.md#1--demonstrate-the-accepting-half-of-gettnull) | Half of a documented behavioural split is currently taught as the whole of it | Low, if done in the showcase rather than the domain | No |
 | 3 | Add the Visual Studio onboarding note to the README — [FR 7](feature-requests.md#7--a-visual-studio-onboarding-note-in-the-readme) | VS 2022/2026 cannot load the SDK-style `.sqlproj`; a newcomer hits this in the first two minutes of a repository designed to be opened | Trivial | No |
 | 4 | ~~Genericize `ProphetsWay.Example.localhost.publish.xml`~~ — **Done in 3.1.0**, [FR 6](feature-requests.md#6--the-committed-developer-specific-publish-profile) | Removing or gitignoring the file was considered and **declined**: a teaching repository benefits from shipping a working publish profile. Resolved by genericization in place — line 7 changed `Data Source=Terebellum` → `Data Source=localhost`, a single token, nothing else altered. The file remains tracked, is not gitignored, and the `.sqlproj` `<None Include>` reference is unchanged | Trivial | No |
 | 5 | ~~Point the "Not demonstrated" table in `AGENTS.md` at [docs/feature-requests.md](feature-requests.md) rather than restating the four gaps~~ — **Done in 3.1.0** | `AGENTS.md` is rewritten by `Repo Analyst` on every pass, so decisions recorded only there are not durable. Its "Coverage" section now links to entries 1–4 instead of restating them | Trivial | No |
 | 6 | ~~Refresh the stale claims in [docs/repo-profile.md](repo-profile.md) at the next analyst pass~~ — **Done in 3.1.0** | The analyst pass that produced the current `repo-profile.md` corrected all of them; see below | Trivial | No |
 | 7 | ~~Update `README.md` — test legs, TFMs, the `ProphetsWay.BaseDataAccess` version, and the EFTools claim~~ — **Done**, re-verified 2026-08-16 | All four statements now match the tree; the EFTools claim is stated with its pinned-submodule qualification rather than unqualified | Low | No |
-| 8 | Add a `v3.1.0` entry to `CHANGELOG.md` | Its most recent heading is `v3.0.0`; the retarget is a shipped, consumer-visible change. **`Changelog Author`'s edit to make** | Low | No |
+| 8 | ~~Add a `v3.1.0` entry to `CHANGELOG.md`~~ — **Done**, verified 2026-08-23 | **This row was true when written and is now false.** `CHANGELOG.md` was opened and its `^# v` headings read: `# v3.1.1 — not yet released` at line 1, **`# v3.1.0` at line 264**, `# v3.0.0` at line 329. `Changelog Author` wrote both; the `v3.1.1` entry is deliberately open, documenting the two-parameter `TestDataAccessFactory.Use` seam and the `StoreCapabilities` enum, and recording that this repository declares nothing so its counts stand at 164 / 139 / 5 / 20 | Low | No |
 | 9 | ~~Retrait `UserDaoTests.ShouldGetCustomFunctionality` off `Contract`~~ — **Done 2026-08-16**, [FR 11](feature-requests.md#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | It demanded of every implementer a literal that `IUserDao`'s `<remarks>` explicitly declines to specify, inside the filter offered as the conformance gate. `Test Designer` replaced the class-level trait with six method-level ones and **split** the test — `ShouldCallCustomUserFunctionality` keeps the contractual half, `ShouldGetCustomFunctionality` is now `Characterization`. **Superseded 2026-08-16:** `ShouldCallCustomUserFunctionality` has since moved to `Characterization` as well — nothing in `IUserDao` promises a no-throw call — and the contractual half is now `ShouldNotAdoptTheInstanceHandedToCustomUserFunctionality` | Low | No — it removes an obligation |
 | 10 | ~~Adopt the traceability rule for `Contract`-scoped assertions~~ — **Done 2026-08-16**, [FR 12](feature-requests.md#12--a-traceability-rule-for-contract-scoped-assertions) | An assertion wrongly in `Contract` is a demand made in the name of a specification that does not make it. The rule is now stated in `AGENTS.md` beside the `Scope` partition — the one place every agent loads on every request. It remains a **review convention with no enforcement mechanism**; FR 12 stays `Proposed` until it is enforceable, and only `Purpose Refiner` may change that status | Trivial | No |
 | 11 | ~~Correct the `Scope` trait counts wherever they are quoted~~ — **Done 2026-08-16**, and **done again later the same day** | The counts were 138 / 4 / 20 of 162 at the first correction and are **139 / 5 / 20 of 164, 328 executions** now, after two tests were added and one was retraited. Corrected in [README.md](../README.md), `AGENTS.md`, [repo-profile.md](repo-profile.md) and this file in each pass. `CHANGELOG.md` line 80 carries the original figure and was **deliberately left alone** — it sits under the `v3.0.0` heading, where 138 / 2 / 20 was accurate; editing a shipped release's notes to match a later tree is falsifying history, not fixing a typo | Trivial | No |
@@ -359,9 +410,10 @@ still has exactly one `PackageReference` and no leakage of implementation types.
 
 ### Still Open — Owned By Other Agents
 
-Neither of these is this document's to fix, and neither has been fixed yet.
+~~Neither of these is this document's to fix, and neither has been fixed yet.~~ **Both are fixed as of
+2026-08-23. This heading is retained as the audit trail; nothing in the table below is outstanding.**
 
 | Source | What is still wrong | Owner |
 | --- | --- | --- |
-| ~~`README.md`~~ | **Fixed since this was written.** The README now states two test legs (`net48`, `net10.0`), `netstandard2.0;net10.0` for the DAL projects, a `ProphetsWay.BaseDataAccess` **3.1.0** reference, and the EFTools claim qualified as pending. Its trait counts and suite size are **139 / 5 / 20 of 164**, 328 executions, re-measured 2026-08-16. Re-verified against the file, not inherited | `README Author` |
-| `CHANGELOG.md` | No `v3.1.0` entry — its most recent heading is `v3.0.0`. It must also **not** be back-edited for the trait counts: line 80 sits under `v3.0.0`, where 138 / 2 / 20 was accurate | `Changelog Author` |
+| ~~`README.md`~~ | **Fixed since this was written.** The README now states two test legs (`net48`, `net10.0`), `netstandard2.0;net10.0` for the DAL projects, a `ProphetsWay.BaseDataAccess` **3.1.0** reference, and the EFTools claim qualified as pending. Its trait counts and suite size are **139 / 5 / 20 of 164**, 328 executions, re-measured 2026-08-16. Re-verified against the file, not inherited. **Two of those values have since moved, and the file moved with them** — the reference is **3.2.0** and the EFTools claim is now stated as demonstrated rather than pending. This cell's `3.1.0` is history | `README Author` |
+| ~~`CHANGELOG.md`~~ | ~~No `v3.1.0` entry — its most recent heading is `v3.0.0`.~~ **FALSE as of 2026-08-23, and this cell is the one that misled.** The file was opened and its `^# v` headings read directly: **`# v3.1.1 — not yet released` at line 1, `# v3.1.0` at line 264, `# v3.0.0` at line 329.** Both entries exist. **The second half of this cell is still binding and must not be discarded along with the first**: `CHANGELOG.md` must **not** be back-edited for the trait counts — line 80 sits under `v3.0.0`, where 138 / 2 / 20 was accurate, and editing a shipped release's notes to match a later tree falsifies history rather than fixing a typo | `Changelog Author` |

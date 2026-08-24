@@ -10,7 +10,8 @@ weighed, so your proposal can start from the open questions rather than from the
 
 **Numbering is per-repository and starts at 1.** It does not continue, mirror, or correspond to the index in
 [ProphetsWay.BaseDataAccess/docs/feature-requests.md](../../ProphetsWay.BaseDataAccess/docs/feature-requests.md),
-which is a separate index that happens to run 1–9. That file's *format* is the convention followed here; its
+which is a separate index that happens to run 1–11 (**that file said 1–9 when this sentence was written;
+corrected 2026-08-23**). That file's *format* is the convention followed here; its
 *content* is unrelated. Where an entry below genuinely depends on one of its entries, it is cited by repository
 and number.
 
@@ -22,6 +23,40 @@ rules live in the `<remarks>` on `IBaseDataAccess` and `DataAccessConventionExce
 `ProphetsWay.BaseDataAccess`. Those are the source of truth. This file links to them and does not duplicate
 them, because duplicated rules drift.
 
+## Triage Pass — 2026-08-23
+
+**Two entries closed, one filed, two re-verified and left alone. Nothing here is urgent.** Run by
+`Purpose Refiner` against the owner's stated goal of publishing `ProphetsWay.EFTools` and knowing these
+projects carry no work that must be built within a week.
+
+| Moved | Entry |
+| --- | --- |
+| `Proposed` → **`Done`** | [5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) — the pointer is at this repository's tip and the Entity Framework implementation is complete |
+| `Scheduled` → **`Done`** | [13](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation) — the seam is load-bearing, exercised by 13 adapted classes, and guarded |
+| **Newly filed as `Done`** | [17](#17--storecapabilities--letting-an-implementation-declare-what-its-store-can-structurally-do) — `StoreCapabilities`, built on this date without a prior entry |
+| Re-verified, **unchanged** | [9](#9--seed-data-for-resources-departments-and-companyresources) (trigger fired, deferral holds) and [15](#15--shouldnotstoreeditsmadetoausersnavigationafterinsertreturned-passes-for-a-prohibited-reason) (new evidence, still owes a `Test Auditor` pass) |
+
+**Entry 5 carried the single worst claim in these three indexes, and it is struck where it appears.** It read:
+*"151 tests, 123 passed, 28 failed, the failures dominated by `CompanyResourceDao`, which does not exist."*
+`ProphetsWay.Example.DataAccess.EF/Daos/CompanyResourceDao.cs` **exists**, `ExampleContext` maps the entity
+with a composite key, and the forwarders call it. **`AGENTS.md` deviation 1 in this repository repeats the
+same dead sentence**; that file is `Repo Analyst`'s and it follows this pass.
+
+### Why entry 17 was filed for work already delivered
+
+**Because the rule is shared-capture, and a delivered decision is still a decision.** The house rule is that
+anyone may append a `Proposed` entry and only `Purpose Refiner` may set a status; nothing in it says a
+mechanism must be proposed before it is built. `StoreCapabilities` needed no approval — it changed no
+contract, no entity, no interface and no `Scope=Contract` assertion — but it draws a durable line between a
+rule every implementation owes and an observation only some can satisfy. **An undocumented line of that kind
+is one a later reader undoes**, which is precisely what this index exists to prevent. Filed as `Done` rather
+than retroactively as `Proposed`: back-dating a status to imply a process that did not happen would be worse
+than recording the truth.
+
+**Nothing in this index needs building within a week.** The one item that touches the publication of
+`ProphetsWay.EFTools` is D11 step 2 — tagging this repository — which is release mechanics, is the owner's,
+and is not a feature request.
+
 ## Index
 
 | # | Item | Status |
@@ -30,18 +65,19 @@ them, because duplicated rules drift.
 | 2 | [A value-type (`struct`) entity](#2--a-value-type-struct-entity) | Deferred — cheap only if 1 lands first |
 | 3 | [Bare `IBaseSoftEntity` — soft delete without an identifier](#3--bare-ibasesoftentity--soft-delete-without-an-identifier) | **Rejected** — not deferred |
 | 4 | [Demonstrating that ambient `TransactionScope` is left untouched](#4--demonstrating-that-ambient-transactionscope-is-left-untouched) | **Rejected here** — belongs to a database-backed implementation |
-| 5 | [Advance the EFTools submodule pointer onto the 3.x contracts](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) | **Proposed** — re-triaged 2026-08-16; the pointer landed and EFTools now **compiles green**, but the claim it tracks is still not demonstrable — the reason has moved twice. **It now also gates this repository's next tag** — owner decision D11, same date |
+| 5 | [Advance the EFTools submodule pointer onto the 3.x contracts](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) | **Done** — 2026-08-23. Pointer is at `f93f0a4`, this repository's tip; the EF implementation is complete and `CompanyResourceDao` exists. **The "151 / 123 / 28, dominated by a `CompanyResourceDao` that does not exist" line is dead** |
 | 6 | [The committed developer-specific publish profile](#6--the-committed-developer-specific-publish-profile) | **Done** — genericized in v3.1.0, file kept |
 | 7 | [A Visual Studio onboarding note in the README](#7--a-visual-studio-onboarding-note-in-the-readme) | **Proposed** — trivial, high leverage |
 | 8 | [Selecting the implementation from configuration instead of a code edit](#8--selecting-the-implementation-from-configuration-instead-of-a-code-edit) | **Rejected** — decided in code comments already |
-| 9 | [Seed data for `Resources`, `Departments` and `CompanyResources`](#9--seed-data-for-resources-departments-and-companyresources) | **Deferred** — revisit with [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) |
+| 9 | [Seed data for `Resources`, `Departments` and `CompanyResources`](#9--seed-data-for-resources-departments-and-companyresources) | **Deferred** — re-triaged 2026-08-23. Its revisit trigger ([entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts)) has **fired**, and the deferral still holds on its own merits |
 | 10 | [A second Data Access Layer implementation in this repository — SQLite, MSSQL, or relocating the Entity Framework one](#10--a-second-data-access-layer-implementation-in-this-repository--sqlite-mssql-or-relocating-the-entity-framework-one) | **Rejected** — all four variants, including replacing `.NoDB` |
 | 11 | [The two mis-scoped `Contract` assertions, and why `.NoDB` stays](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays) | **Done** — both halves applied 2026-08-16; a third mis-scope closed with them |
 | 12 | [A traceability rule for `Contract`-scoped assertions](#12--a-traceability-rule-for-contract-scoped-assertions) | **Proposed** — the cheap control that would have caught mis-scope 2 |
-| 13 | [A seam letting another repository point this suite at its own implementation](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation) | **Scheduled** — direction approved 2026-08-16 (shape B); **the seam landed the same day and is unverified by any test run** — `TestDataAccessFactory.Use`, read 2026-08-16. Three constraints emerged with it, all answered by the landed shape — see the entry |
+| 13 | [A seam letting another repository point this suite at its own implementation](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation) | **Done** — 2026-08-23. `TestDataAccessFactory.Use` is load-bearing in `ProphetsWay.EFTools.Tests`, drives 13 adapted classes, and is guarded by `TestSeamTests`. **The "unverified by any test run" line is dead** |
 | 14 | [Restoring `DateTimeKind` on a `Department` reached as a navigation property](#14--restoring-datetimekind-on-a-department-reached-as-a-navigation-property) | **Proposed** — 2026-08-16; the gap left open by narrowing `IDepartmentDao` rule 18 to that Data Access Object's own reads |
 | 15 | [`ShouldNotStoreEditsMadeToAUsersNavigationAfterInsertReturned` passes for a prohibited reason](#15--shouldnotstoreeditsmadetoausersnavigationafterinsertreturned-passes-for-a-prohibited-reason) | **Proposed** — 2026-08-19. A `Scope=Contract` test observed green against an implementation **because** it violates the SNAPSHOT rule. Owes a `Test Auditor` pass; the suspected ordering mechanism is **stated, not measured** |
 | 16 | [The IDENTIFIER rule forbids an identifier that the paradigm permits](#16--the-identifier-rule-forbids-an-identifier-that-the-paradigm-permits) | **Proposed** — 2026-08-19. **Latent** — all seven entities are store-keyed, so nothing here can trip it. A contract-wording call for an `Interface Architect`, with three candidate shapes and no answer proposed |
+| 17 | [`StoreCapabilities` — letting an implementation declare what its store can structurally do](#17--storecapabilities--letting-an-implementation-declare-what-its-store-can-structurally-do) | **Done** — built and filed 2026-08-23, **in that order**. Recorded after the fact because it is a durable decision about what `Characterization` means, not because it needed approval |
 
 Numbers are permanent. Entries are never renumbered and never removed —
 [purpose-and-scope.md](purpose-and-scope.md) cites entries by number, and a rejected entry is decision history
@@ -356,7 +392,47 @@ in-memory store — pointing at this entry. That is a `README Author` decision, 
 
 ## 5 — Advance the EFTools submodule pointer onto the 3.x contracts
 
-**Status:** **Proposed** — re-triaged 2026-08-16, **deliberately unchanged**. The highest-consequence open
+> **STATUS CHANGED 2026-08-23 — `Proposed` → `Done`. Read this note before anything below it; large parts of
+> this entry are now *wrong* rather than out of date, and they are marked where they appear.**
+>
+> **The pointer is current, and it is current to *this* repository's newest commit.** `ProphetsWay.EFTools`'s
+> `.git/modules/ProphetsWay.Example/HEAD` was opened on this date and holds
+> **`f93f0a41a76834647962ddf9e830e01e24e05f24`** — *"Let an implementation declare what its store can
+> structurally do"*, the tip of `main` here. **`d845863` and `61d9e7d` are both superseded; do not restate
+> either.**
+>
+> **The EF implementation is complete against the 3.x contracts.** Verified by opening, in
+> `ProphetsWay.EFTools`: `ProphetsWay.Example.DataAccess.EF/ExampleContext.cs`, which declares **seven**
+> `DbSet<>` properties, calls `ToTable` for all seven, and maps `CompanyResource` with
+> `HasKey(x => new { x.CompanyId, x.ResourceId })` — the composite key, not `HasNoKey()`; and
+> `ProphetsWay.Example.DataAccess.EF/Daos/`, which holds **seven** Data Access Objects including
+> `DepartmentDao.cs` and `CompanyResourceDao.cs`.
+>
+> **The claim below that dominates this entry's most recent revision is dead.** It says the run is *"not green:
+> **151 tests, 123 passed, 28 failed**, the failures dominated by `CompanyResourceDao`, which **does not
+> exist**."* **`CompanyResourceDao.cs` exists**, and has for several days; `ExampleContext` maps the entity;
+> and the three `ICompanyResourceDao` forwarders call it rather than throwing. **Neither the figure nor the
+> attributed cause may be restated.** `AGENTS.md` deviation 1 carries the same dead sentence and belongs to
+> `Repo Analyst`, which follows this pass.
+>
+> **What this closure rests on, stated exactly.** Everything above was verified by opening a file. The
+> **pass figure was not** — no test was run by this pass. The owner reports the EFTools suite at
+> **270 / 270 / 0** in roughly two seconds, measured twice on this date. The corroboration available without a
+> terminal is that `ProphetsWay.EFTools.Tests/TestResults/eftools-verify-20260823.trx` records
+> **270 / 259 / 11** from a run at **16:09–16:10** local, and `f93f0a4` — the commit this repository's pointer
+> now names — was authored at roughly **18:53**, nearly three hours later, and is the commit that rewrote
+> `SnapshotDeepCopyTests.cs` and added the `StoreCapabilities` declaration. **All 11 failures in that artifact
+> are in exactly those two places**: ten in `EFSnapshotDeepCopyTests` and one
+> (`ShouldExposeUncommittedWritesToAnotherInstance`) dying after 30.02 seconds on a SQL Server lock wait,
+> which is the precise cost [entry 17](#17--storecapabilities--letting-an-implementation-declare-what-its-store-can-structurally-do)
+> exists to remove. **That `.trx` is stale and must not be read as current.**
+>
+> **What is *not* closed by this, and it is not this entry.** D11 step 3 advances EFTools' pointer onto a
+> **tag** of this repository, after step 2 tags it. The pointer sits on an **untagged** commit. That is
+> release sequencing, tracked in the D11 section above, and it is the only thing left between here and
+> publication.
+
+**Status:** ~~**Proposed**~~ **Done — 2026-08-23.** Re-triaged 2026-08-16 and left unchanged then; **closed now**. The highest-consequence open
 item about this repository, and the only one that affects whether its central claim is currently true.
 
 **Why the status did not move, given that its first step has landed.** The pointer advance is one of six
@@ -448,7 +524,7 @@ than wrong.
 when `BaseUnitTests<T>` still exposed `protected abstract T GetIExampleDataAccess { get; }`, which is how
 `ProphetsWay.EFTools` supplied its own implementation. **The single-construction-site refactor removed that
 hook**, and `TestDataAccessFactory.Create()` is a `static` method taking no argument and naming `.NoDB`
-directly \u2014 so the Entity Framework repository, which may not edit files under its pinned submodule, now has
+directly — so the Entity Framework repository, which may not edit files under its pinned submodule, now has
 no way to run this suite against its implementation. Closing this entry therefore requires a change **here**
 as well as there. The reasoning is not restated: it is
 [entry 13](#13--a-seam-letting-another-repository-point-this-suite-at-its-own-implementation).
@@ -591,7 +667,19 @@ already say so.
 
 ## 9 — Seed data for `Resources`, `Departments` and `CompanyResources`
 
-**Status:** Deferred. Real, cheap, and already half-planned in the source — but it buys nothing until a
+> **RE-TRIAGED 2026-08-23 — status **unchanged at `Deferred`**, but its stated revisit trigger has fired.**
+> This entry says *"revisit with [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts)"*,
+> and entry 5 closed on this date. **Deliberately still `Deferred` rather than promoted**, because the reason
+> for deferral was never the trigger — it was that no test in this repository exercises the deployed database,
+> and that is still true: `ProphetsWay.Example.Tests` runs against `.NoDB`, and the EFTools suite seeds its
+> own rows. Nothing that now exists would consume seed data.
+>
+> **The trigger is recorded as fired so the next pass does not re-derive it**, and so nobody reads the
+> unchanged status as an oversight. What would actually move this is a *reader* complaint — someone deploying
+> the `.dacpac` and finding three empty tables where four are populated — not a milestone in another
+> repository.
+
+**Status:** Deferred — **re-triaged 2026-08-23; revisit trigger has fired and the deferral still holds.** Real, cheap, and already half-planned in the source — but it buys nothing until a
 database-backed implementation exists to consume it, which is [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts).
 
 ### The gap
@@ -1012,7 +1100,25 @@ that folder a second, unrelated job.
 
 ## 13 — A seam letting another repository point this suite at its own implementation
 
-**Status:** **Scheduled** — moved from `Proposed` on **2026-08-16** by owner decision. Filed 2026-08-16 while
+> **STATUS CHANGED 2026-08-23 — `Scheduled` → `Done`.** The seam is not merely landed; it is **load-bearing,
+> exercised, and guarded**, which is what the previous status line said it was still waiting for —
+> *"the seam landed the same day and is unverified by any test run."*
+>
+> Verified by opening, in `ProphetsWay.EFTools`: `ProphetsWay.EFTools.Tests/TestSeam.cs`, an `internal static`
+> class whose `[ModuleInitializer]` calls
+> `TestDataAccessFactory.Use(() => Constants.GetExampleDataAccess, StoreCapabilities.TransactionIsolation)`;
+> and `ProphetsWay.EFTools.Tests/`, which holds **13** one-line adapter classes plus `TestSeamTests.cs` and
+> `AdapterCoverageTests.cs`. `TestSeamTests` asserts **by full type name** that the factory is producing
+> `ProphetsWay.Example.DataAccess.EF.ExampleDataAccess` and not the identically named `.NoDB` type — the
+> assertion this repository's factory cannot write because it does not know that repository's types, which is
+> exactly the division of labour shape B predicted.
+>
+> **A second parameter has since been added to `Use`.** That is not scope creep on this entry; it is a
+> separate mechanism with its own reasoning, filed on this date as
+> [entry 17](#17--storecapabilities--letting-an-implementation-declare-what-its-store-can-structurally-do).
+> The default preserves this entry's guarantee that a caller who never invokes `Use` sees no change.
+
+**Status:** ~~**Scheduled**~~ **Done — 2026-08-23.** Moved to `Scheduled` from `Proposed` on **2026-08-16** by owner decision. Filed 2026-08-16 while
 re-triaging [entry 5](#5--advance-the-eftools-submodule-pointer-onto-the-3x-contracts) after the
 `ProphetsWay.EFTools` submodule pointer advanced. **This is the entry the pointer advance created**, and
 nothing in this index covered it.
@@ -1391,6 +1497,24 @@ timestamp on an included `Department` has found this entry rather than a bug.
 
 ## 15 — `ShouldNotStoreEditsMadeToAUsersNavigationAfterInsertReturned` passes for a prohibited reason
 
+> **RE-TRIAGED 2026-08-23 — status **unchanged at `Proposed`**, and there is now independent evidence for the
+> suspicion this entry filed.** Re-verified by opening `ProphetsWay.Example.Tests/SnapshotDeepCopyTests.cs` on
+> this date: the method is still declared at line 259 and still carries `[Trait("Scope", "Contract")]`, so it
+> is still inside the conformance gate.
+>
+> **The new evidence is a second implementation disagreeing with the first.**
+> `ProphetsWay.EFTools.Tests/TestResults/eftools-verify-20260823.trx` records this exact test **failing**
+> against the Entity Framework Data Access Layer while it passes against `.NoDB`. That is precisely the shape
+> this entry predicted: a `Contract` assertion that one store satisfies for a reason the contract does not
+> require. **Two caveats keep this from being either a closure or a promotion.** The artifact is **stale** —
+> it predates `f93f0a4`, which rewrote that very file — so the disagreement may already have been resolved in
+> either direction. And the entry's own suspected mechanism remains **stated, not measured**.
+>
+> **It still owes a `Test Auditor` pass, and that pass now has a much better starting point**: run the EFTools
+> suite and see whether this test is green or red against a relational store. Whichever it is, the answer is
+> informative. **Not urgent** — the test is currently green where it is gated, and a wrong `Contract` test is
+> a specification defect rather than a product defect.
+
 **Status:** **Proposed** — filed 2026-08-19 by an agent under the shared-capture rule, awaiting `Purpose
 Refiner` triage. **Not an extension of [entry 11](#11--the-two-mis-scoped-contract-assertions-and-why-nodb-stays)**,
 which concerned a different test in the same file — `ShouldReadANavigationPropertyEditBackInsideTheTransactionThatSubmittedIt`
@@ -1532,3 +1656,89 @@ offered to third parties as a conformance gate. Per the shared block, a rule cha
 
 The IDENTIFIER rule stating a condition a Data Access Layer over a `0`-keyed row can satisfy, or explicitly
 scoping itself to store-generated identifiers.
+
+---
+
+## 17 — `StoreCapabilities` — letting an implementation declare what its store can structurally do
+
+**Status:** **Done — 2026-08-23.** Built first and filed second, which is unusual here and is explained below.
+Landed in `ProphetsWay.Example.Tests` on this date, in the commit *"Let an implementation declare what its
+store can structurally do"* (`f93f0a4`).
+
+### Why an entry exists for something already delivered
+
+**Because this index records decisions, not approvals.** Nothing about this needed permission — it changed no
+contract, no entity, no Data Access Object interface, and no `Scope=Contract` assertion, and it is confined to
+the test project. It is filed because the decision it embodies is **durable and non-obvious**: it draws a line
+between *a rule every implementation owes* and *an observation only some implementations can satisfy*, and
+that line is the kind of thing a later reader will meet, fail to see the reasoning for, and undo.
+
+It is the sibling of [entry 12](#12--a-traceability-rule-for-contract-scoped-assertions). Entry 12 asks how a
+`Contract` assertion earns its scope; this one answers what happens to a `Characterization` assertion that two
+correct implementations must answer differently.
+
+### What was built
+
+Verified by opening `ProphetsWay.Example.Tests/StoreCapabilities.cs` and
+`ProphetsWay.Example.Tests/TestDataAccessFactory.cs` on this date.
+
+- A `[Flags] public enum StoreCapabilities` with three members: `None = 0`,
+  `DenormalizedNavigationWrites = 1`, `TransactionIsolation = 2`.
+- A second parameter on `TestDataAccessFactory.Use(Func<IExampleDataAccess>, StoreCapabilities)`, **defaulted
+  to `TestDataAccessFactory.InMemoryStore`** — a `public const` equal to `DenormalizedNavigationWrites`, which
+  is `.NoDB`'s actual shape.
+- `TestDataAccessFactory.Capabilities`, read by **exactly two** tests: one in `SnapshotDeepCopyTests` and one
+  in `DataAccessTransactionTests`.
+
+**This repository therefore declares nothing.** The default is its own shape, so every existing call site and
+every test here is unchanged, and a consumer that never calls `Use` sees exactly what it saw before.
+
+### Why it is right, in the terms this repository judges things by
+
+**The problem it solves is a suite whose red stops meaning anything.** Two assertions here are true of an
+in-memory store and **cannot** be true of a normalized relational one — not "are not yet," but cannot, because
+the row shape that makes one true is the row shape that makes the other impossible. A relational store holds
+one `Companies` row and reads it back through a join, so an entity's view of a company and the `Companies`
+table *are the same data*. Left unqualified those two tests hand every correct relational implementation a
+permanent two-test failure — and a permanently two-red suite is one nobody reads.
+
+**It is not an opt-out, and the design forecloses making it one.** The remarks state that no `Scope=Contract`
+assertion reads the enum and none may be made to, on the ground that *"an obligation a caller can decline is
+not one."* A declaration changes **which** outcome a characterization test asserts, never **whether** it
+asserts. Both branches of both tests assert something real, and in the `DenormalizedNavigationWrites` case the
+branch a relational store takes is the **stronger** of the two: it proves an `Update` did not cascade into the
+`Company`, `Job` and `Department` rows the caller never named.
+
+**Three design choices are worth not re-litigating:**
+
+| Choice | Reason |
+| --- | --- |
+| `[Flags]`, not a `Relational`/`InMemory` label | The axes are independent — a document store denormalizes *and* isolates; the in-memory store does the first only; a relational store does the second only. One label forces a third store to pick the nearest lie, and a new axis is a new flag rather than a new taxonomy |
+| Declared in code, in the same call as the implementation choice | *"This repository is read before it is run, and one obvious line beats a lookup whose other half a reader has to go and find."* Deliberately **not** an environment variable, `.runsettings` parameter or config file |
+| Defaulted to the in-memory shape | Keeps this repository's visible surface unchanged, and makes forgetting to declare **no worse than today** — the forgetful consumer sees the same two failures they would have seen anyway |
+
+### The measured payoff, and the half of it that is not about assertions
+
+`TransactionIsolation` does not merely change what the transaction test asserts — it changes whether the test
+performs a read at all. Against a store with isolation, reading an uncommitted row **blocks on a lock** until
+the writing transaction ends and then dies on the provider's command timeout. Branching around the
+`ShouldBe` would have left the whole cost in place, so the branch is around **the read**.
+
+The owner reports the EFTools run falling from **7.32 s to 5.78 s**, and the pre-declaration
+`.trx` artifact in that repository shows `ShouldExposeUncommittedWritesToAnotherInstance` consuming
+**30.02 seconds** before failing. **Not re-measured here.**
+
+### Scope verdict — in scope, and it does not widen the purpose sentence
+
+This repository's product is a demonstration that the same business logic and the same tests run against
+different Data Access Layer implementations. **A mechanism that lets a *second kind of store* pass the same
+suite is that product, not an addition to it.** Had this been proposed before it was built, the verdict would
+have been *In scope* without qualification.
+
+### The one thing to watch
+
+**The failure mode is scope creep by flag.** Each new flag is individually reasonable and the set as a whole
+degrades `Characterization` from "a choice this implementation made" into "a matrix of store shapes."
+`StoreCapabilities`' own remarks set the bar — a flag is warranted only where two correct implementations
+**cannot** agree, never where one merely has not caught up. **A third flag should come back through triage**
+rather than being added on the same reasoning as the first two.

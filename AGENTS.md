@@ -312,13 +312,20 @@ IDENTIFIER and ROW COUNT rules the same day — so the tree now carries **164 te
 shipped 160. Do not repeat the byte-identical claim against the current tree, and do not restate the
 released 3.1.0 as anything other than what it was.
 
+**HEAD is `f93f0a4`, and it added a mechanism rather than a test.** See *The Capability Declaration*
+below. The suite total is **unchanged at 164** — re-counted 2026-08-23 by grepping every `[Fact]`,
+`[Theory]` and `[InlineData]` in `ProphetsWay.Example.Tests/`, which returns **149 `[Fact]` + 6
+`[Theory]` carrying 15 `[InlineData]` = 164 cases**, not carried from the previous figure. The version
+line is still **3.1.1** — `app-variables.yml` reads `Major: '3'` / `Minor: '1'` / `Patch: '1'`, opened
+2026-08-23. Never change it.
+
 ### Documents
 
 | File | Owner | Contains |
 |---|---|---|
 | [docs/repo-profile.md](docs/repo-profile.md) | `Repo Analyst` | The evidence base — inventory, API surface, TFMs, packaging audit, README accuracy |
 | [docs/purpose-and-scope.md](docs/purpose-and-scope.md) | `Purpose Refiner` | What this repo is for, and the scope bar everything is judged against |
-| [docs/feature-requests.md](docs/feature-requests.md) | `Purpose Refiner` triages; anyone may append | Entries 1–12 — the durable record of what was considered and deliberately not built |
+| [docs/feature-requests.md](docs/feature-requests.md) | `Purpose Refiner` triages; anyone may append | Entries **1–17** — the durable record of what was considered and deliberately not built. **The figure of "1–12" this row carried until 2026-08-23 is superseded**; five entries have been filed since, and 5, 11, 13 and 17 are now `Done` |
 
 Numbering in `feature-requests.md` is **per-repository, starting at 1**, and does not correspond to
 the index of the same name in `ProphetsWay.BaseDataAccess`.
@@ -331,16 +338,60 @@ EFTools repo, `ProphetsWay.Example.DataAccess.EF` is a second implementation of 
 **The same tests pass against both** — that is the entire argument for the paradigm, and it is the
 thing any documentation of this repo must lead with.
 
-The claim is **currently pending, not false forever** — but the reason has moved. The EFTools
-submodule pointer was advanced on 2026-08-16 and now carries the 3.1.0 contracts; what has not
-happened is EFTools' own adoption of them. See deviation 1 below before repeating the claim
-unqualified in prose meant for a reader.
+**As of 2026-08-23 the claim is no longer pending — it is demonstrated.** Every hedge this section
+carried is dead. `ProphetsWay.EFTools` pins this repository at **`f93f0a4`**, its own tip, and runs
+this suite against `ProphetsWay.Example.DataAccess.EF` to **270 total / 270 passed / 0 failed**, with
+the conformance gate `--filter "Scope=Contract|Guard=Seam"` at **245 / 245 / 0** in about two seconds.
+`Purpose Refiner` closed [FR 5](docs/feature-requests.md) as **Done — 2026-08-23** on that basis.
+**Do not restate "151 tests, 123 passed, 28 failed", and do not restate that `CompanyResourceDao`
+does not exist** — `ProphetsWay.EFTools/ProphetsWay.Example.DataAccess.EF/Daos/CompanyResourceDao.cs`
+was located by file search on 2026-08-23. What remains is release sequencing, not correctness: the
+pointer sits on an untagged commit, and D11 step 3 wants it on a tag. See deviation 1.
 
 `ProphetsWay.Example.Tests/TestDataAccessFactory.cs` is the **only** file in the suite that names a
 concrete implementation — re-verified 2026-08-16 by a repo-wide search for `new ExampleDataAccess`,
 which matches once, in `Create`. Changing that single `return` repoints all 164 tests. Do not
 introduce a second construction site — doing so silently destroys the property this repo exists to
 demonstrate.
+
+### The Capability Declaration — new in `f93f0a4`, and easy to get backwards
+
+A consuming repository now states **two** things in the one `Use` call: which implementation the suite
+runs against, and **what its store is structurally able to do**. Read from
+`ProphetsWay.Example.Tests/StoreCapabilities.cs` and `TestDataAccessFactory.cs` on 2026-08-23.
+
+| Piece | What it is |
+|---|---|
+| `StoreCapabilities` | A `[Flags] public enum` — `None = 0`, `DenormalizedNavigationWrites = 1`, `TransactionIsolation = 2` |
+| `TestDataAccessFactory.InMemoryStore` | A `public const StoreCapabilities` equal to `DenormalizedNavigationWrites` — `.NoDB`'s actual shape, named so a reader meeting the default is told what it *is* rather than which flags it sets |
+| `TestDataAccessFactory.Use(Func<IExampleDataAccess>, StoreCapabilities)` | The second parameter, **defaulting to `InMemoryStore`** |
+| `TestDataAccessFactory.Capabilities` | Read under the same lock, at execution time, by **exactly two** tests and nothing else |
+
+**This repository declares nothing, and its own suite is unchanged.** The default is its own shape, so
+no call site here moved and no test was added — which is why the total is still 164.
+
+**The nuance that inverts if restated from memory:** the flags are **positive capabilities on two
+independent axes**, not a store-kind label. A normalized relational DAL declares `TransactionIsolation`
+**only**, and the *absence* of `DenormalizedNavigationWrites` is itself a positive declaration — such a
+store holds one Companies row read back through a join and physically cannot hold a second,
+denormalized copy of a navigation node. **The branch that absence selects is the *stronger* assertion**:
+it proves an `Update` did not cascade into the Company, Job and Department rows the caller never named.
+Adding the flag to "fix" a relational failure would assert an in-memory outcome against a relational
+store.
+
+The two readers were **renamed** to say what they assert rather than what their setup does:
+
+- `SnapshotDeepCopyTests.ShouldReadANavigationPropertyEditBackOnlyWhereTheStoreDenormalizesTheWrite`
+- `DataAccessTransactionTests.ShouldExposeUncommittedWritesToAnotherInstanceOnlyWhereTheStoreDoesNotIsolateThem`
+
+In the second, **the branch is around the read, not around the `ShouldBe`** — against an isolating
+store the uncommitted read does not fail, it *waits* on the lock until the provider's command timeout,
+so skipping only the assertion would leave the whole cost in place. Removing that read is what took
+EFTools' full run from roughly thirty-two seconds to about two.
+
+**No `Scope=Contract` assertion reads the enum, and none may be made to.** A contract obligation a
+caller can decline is not one. Reasoning and limits: the `<remarks>` on `StoreCapabilities` itself and
+[FR 17](docs/feature-requests.md), `Done — 2026-08-23`.
 
 ### Layout
 
@@ -363,8 +414,11 @@ constructor there and does not on .NET Core, which is what the `ConventionShowca
 exception-passthrough guard pins. Do not report the split as drift.
 
 The suite runs 164 tests on each leg — **328 executions**. `ProphetsWay.BaseDataAccess` is consumed as
-a NuGet `PackageReference` at **3.1.0**, never as a project reference — verified in
-`ProphetsWay.Example.DataAccess.csproj`, which carries the only `PackageReference` to it.
+a NuGet `PackageReference` at **3.2.0**, never as a project reference — read from
+`ProphetsWay.Example.DataAccess.csproj` line 29 on 2026-08-23, which carries the only
+`PackageReference` to it. **Any statement of `3.1.0` anywhere in this workspace is superseded**; the
+bump landed on 2026-08-23 and brought the nullable annotations that let `ProphetsWay.EFTools` delete
+ten `CS8766` suppressions.
 
 ### Domain Model
 
@@ -447,7 +501,13 @@ source of truth; this is an index, not a restatement.
   [FR 12](docs/feature-requests.md#12--a-traceability-rule-for-contract-scoped-assertions).
 - **The `ConventionShowcase/` DALs are deliberately mis-wired.** They are the subject under test,
   not the implementation under test, and they construct themselves rather than using the factory.
-  Do not "fix" them.
+  Do not "fix" them. They are also outside the capability mechanism: they construct their own DALs and
+  carry no dependency on `TestDataAccessFactory`, so `Use` does not and must not change what they
+  exercise.
+- **A `Characterization` test may branch on a declared store capability; a `Contract` test may not.**
+  See *The Capability Declaration* above. This is the answer to the question
+  [FR 12](docs/feature-requests.md#12--a-traceability-rule-for-contract-scoped-assertions) leaves
+  open — what becomes of an observation two correct implementations must answer differently.
 
 ### Coverage — What Is Demonstrated, and Where the Gaps Are Recorded
 
@@ -469,8 +529,8 @@ Do not copy their reasoning back into this file; ending that duplication is why 
 
 | # | Deviation | Notes |
 |---|---|---|
-| 1 | **`ProphetsWay.EFTools` consumes this repo as a git submodule** | **It is a submodule, not a vendored copy — earlier versions of this file said otherwise and were wrong.** `ProphetsWay.EFTools/.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The two therefore **cannot drift**; the submodule is simply *pinned*. **The pointer was advanced on 2026-08-16 and again on 2026-08-18, and is now `61d9e7d`** — **not** `d845863`, and **not** the `3.1.0` tag. `git submodule status` renders it `3.1.0-1-g61d9e7d`: one commit past that tag, being the merge of this repo's PR #21 (`3.1.1-eftool-findings`), which opened the untagged **3.1.1** line and added `TestDataAccessFactory.Use`. Verified 2026-08-20 by reading `ProphetsWay.EFTools/.git/modules/ProphetsWay.Example/HEAD` against this repo's `.git/logs/HEAD`; the two are the same commit. Earlier text saying `967fd26` or `d845863` is superseded. **The consequence has narrowed sharply, and the reason this file previously gave is now false.** It said both EFTools `.csproj` files "still reference `ProphetsWay.BaseDataAccess` **2.5.0**" — they read **3.1.0**, verified by opening `ProphetsWay.EFTools.csproj` (line 53) and `ProphetsWay.Example.DataAccess.EF.csproj` (line 13). **The pointer is current, the contract references are current, and the suite now runs against the EF DAL**: `ProphetsWay.EFTools.Tests` adapts 13 of this repo's 15 test classes and points them at `ProphetsWay.Example.DataAccess.EF` through a `[ModuleInitializer]` calling `TestDataAccessFactory.Use`. **The real remaining blocker is that it is not green.** Last measured 2026-08-18: **151 tests, 123 passed, 28 failed**, the failures dominated by `CompanyResourceDao`, which **does not exist** — there is no `CompanyResourceDao.cs` in `ProphetsWay.Example.DataAccess.EF/Daos/`, no `DbSet<CompanyResource>` and no `ToTable` for it in `ExampleContext`, and the three `ICompanyResourceDao` forwarders throw `NotImplementedException`. Never edit files under `ProphetsWay.EFTools/ProphetsWay.Example/` — edit here and advance the pointer. Tracked as [FR 5](docs/feature-requests.md). |
-| 2 | Has `app-variables.yml` / `local-pipeline.yml` despite not being published | **Correct and verified.** `PostTargetToNuGet` and `TargetProject` are both commented out; the pipeline builds and tests only. |
+| 1 | **`ProphetsWay.EFTools` consumes this repo as a git submodule** — ~~*and the EF run is not green*~~ **that half is CLOSED, 2026-08-23** | **It is a submodule, not a vendored copy.** `ProphetsWay.EFTools/.gitmodules` declares `path = ProphetsWay.Example`, `url = …/ProphetsWay.Example.git`, `branch = main`. The two therefore **cannot drift**; the submodule is simply *pinned*. **The pointer is `f93f0a4`** — `f93f0a41a76834647962ddf9e830e01e24e05f24`, read from `ProphetsWay.EFTools/.git/modules/ProphetsWay.Example/HEAD` on **2026-08-23**, and it is **this repository's own tip**. `git submodule status` describes it as `3.1.0-4-gf93f0a4`: four commits past that tag, on the open, untagged **3.1.1** line. **Every earlier pointer this row has carried — `967fd26`, `d845863`, `61d9e7d` — is superseded and must not be restated.** **The blocker this row existed to record is gone.** `ProphetsWay.EFTools.Tests` adapts 13 of this repo's 15 test classes and points them at `ProphetsWay.Example.DataAccess.EF` through a `[ModuleInitializer]` calling `TestDataAccessFactory.Use(() => Constants.GetExampleDataAccess, StoreCapabilities.TransactionIsolation)` — read from `ProphetsWay.EFTools/ProphetsWay.EFTools.Tests/TestSeam.cs` line 53. That run is **270 total / 270 passed / 0 failed**, conformance gate **245 / 245 / 0** in about two seconds. **Three claims this row used to make are dead and must never be restated:** *"151 tests, 123 passed, 28 failed"*; *"the failures dominated by `CompanyResourceDao`, which does not exist"* — `ProphetsWay.EFTools/ProphetsWay.Example.DataAccess.EF/Daos/CompanyResourceDao.cs` was located by file search on 2026-08-23; and *"both EFTools `.csproj` files reference `ProphetsWay.BaseDataAccess` 3.1.0"* — they read **3.2.0**, as does this repo's own contracts project. [FR 5](docs/feature-requests.md) is **`Done — 2026-08-23`**. **What is left is release sequencing, not correctness:** the pointer sits on an *untagged* commit, and D11 step 3 wants it on a tag of this repository. Never edit files under `ProphetsWay.EFTools/ProphetsWay.Example/` — edit here and advance the pointer. |
+| 2 | Has `app-variables.yml` / `local-pipeline.yml` despite not being published | **Correct and verified**, re-opened 2026-08-23. `PostTargetToNuGet` and `TargetProject` are both commented out; `HasSqlProj: 'yes'`, `Product: 'Example'`, `RepoName: 'ProphetManX/ProphetsWay.Example'`. The pipeline builds and tests only. |
 | 3 | Not packaged; packaging metadata is empty stubs | Correct and intentional. A teaching artifact is not a package — do not fill these in. `docs/nuget-extraction-proposal.md` is `n/a` here, not missing. |
 | 4 | Visual Studio cannot open the SDK-style `.sqlproj` | A VS 2022/2026 limitation, not a defect. The migration is what makes `dotnet build` work on the solution at all. VS Code, SSMS 22, and the .NET CLI are fine; a VS user can unload the database project and work on the three C# projects normally. |
 
@@ -493,21 +553,39 @@ and were factually wrong**; do not reinstate them.
 When writing this repo's README, the reader is someone evaluating whether the BaseDataAccess
 paradigm is worth adopting. Lead with the swap-the-DAL demonstration, not with a project listing.
 
-**All three things this section previously listed as outstanding in the README have since landed** —
-re-verified by opening `README.md` on 2026-08-16, not inherited:
+**The Visual Studio note landed and is still there** — re-verified by opening `README.md` on
+2026-08-16: it says VS 2022/2026 cannot open an SDK-style `.sqlproj` and points at *Building & Testing
+Locally*. [FR 7](docs/feature-requests.md) is still filed `Proposed`; only `Purpose Refiner` may close
+it.
 
-- The Visual Studio note is present: the README says VS 2022/2026 cannot open an SDK-style `.sqlproj`
-  and points at *Building & Testing Locally*. [FR 7](docs/feature-requests.md) is still filed
-  `Proposed`; only `Purpose Refiner` may close it.
-- The EFTools claim is now stated **with** its qualification, so it reads as pending rather than
-  unconditional. Its *reason* has moved twice. **Corrected 2026-08-20:** the pointer is current
-  (`61d9e7d`) *and* EFTools' own projects are on `ProphetsWay.BaseDataAccess` **3.1.0** — the "still on
-  2.5.0" reason this line used to give is false. What is pending is only that the EF run is not green:
-  151 tests, 123 passed, 28 failed at the last measurement. See deviation 1.
-- The build facts are current: `netstandard2.0`/`net10.0` for the DAL projects, `net48`/`net10.0` for
-  the tests, a `ProphetsWay.BaseDataAccess` **3.1.0** reference, two legs, and **164 tests / 328
-  executions**.
+**The README defects this section used to list are fixed — re-grepped on 2026-08-23, not assumed.**
+`README Author` ran after the analyst pass that recorded them and corrected the file; **no open README
+defect is known.** Line 41 names the pointer **`f93f0a4`** and calls it four commits past the `3.1.0`
+tag; lines 44 and 402 both read `ProphetsWay.BaseDataAccess` **3.2.0**; the "under way and **not
+finished** / throwing stubs" framing is gone, replaced by the **270 / 270 / 0** run, the **245 / 245 / 0**
+gate and [FR 5](docs/feature-requests.md) closed `Done` — in the `.NoDB` blurb as well as the EFTools
+paragraph; line 138 states the two-parameter `TestDataAccessFactory.Use(Func<IExampleDataAccess>,
+StoreCapabilities)`; line 173 says `ProphetsWay.EFTools.Tests` carries **thirteen** adapters, empty by
+design so xUnit discovers the suite; and lines 277 and 283 carry the post-`f93f0a4` `Characterization`
+test names, which now pass by branching. **Do not restate the old defect list as outstanding, and do not
+re-report `61d9e7d` or a `3.1.0` reference as present in that file.**
 
-`CHANGELOG.md` has no v3.1.0 entry yet; that belongs to `Changelog Author`. It must **not** be
-back-edited for the trait counts — the 138 / 2 / 20 figure under its `v3.0.0` heading was accurate at
-that release.
+**What is still accurate and must not be "corrected":** the trait table, now at lines 229–233, reads
+`Contract` 139 / `Characterization` 5 / `Dispatcher` 20, and lines 374–375 and 793 read 164 tests and
+328 executions on `net48` and `net10.0`. All of it was **re-derived** on 2026-08-23 by grepping every
+`[Fact]`, `[Theory]`, `[InlineData]` and `[Trait("Scope", …)]` in the test project — 149 facts plus 15
+inline cases is 164, and 139 + 5 + 20 is 164. The counts did not move because `f93f0a4` added a
+mechanism, not a test. **The anchors moved in the rewrite; the 201–203 / 205 / 292–293 / 709 citations
+this section used to carry are superseded.**
+
+**`CHANGELOG.md` does have a v3.1.0 entry, and a v3.1.1 one — correcting a false claim made here earlier
+the same day.** This paragraph previously read "`CHANGELOG.md` has no v3.1.0 entry yet." **That was
+carried rather than checked, and it is false.** The file was opened on 2026-08-23 and its `^# v` headings
+read directly: **`# v3.1.1 — not yet released` at line 1, `# v3.1.0` at line 264, `# v3.0.0` at line 329.**
+The `v3.1.1` entry is open by design — the owner will not tag the line until `ProphetsWay.EFTools` has
+what it needs — and it documents the two-parameter
+`TestDataAccessFactory.Use(Func<IExampleDataAccess>, StoreCapabilities = InMemoryStore)` seam and the
+`StoreCapabilities` `[Flags]` enum, records that this repository declares nothing so its counts stand at
+164 with the partition at 139 / 5 / 20, and states that a one-parameter `Use` call still compiles.
+`Changelog Author` owns that file; nothing here edits it. It must **not** be back-edited for the trait
+counts — the 138 / 2 / 20 figure under its `v3.0.0` heading was accurate at that release.
