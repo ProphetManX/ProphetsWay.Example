@@ -13,5 +13,8 @@
     <SqlCmdVariable Include="DatabaseInstance">
       <Value>ProphetsWay.Example</Value>
     </SqlCmdVariable>
+    <SqlCmdVariable Include="CreateLegacyTestUser">
+      <Value>True</Value>
+    </SqlCmdVariable>
   </ItemGroup>
 </Project>

@@ -3,7 +3,7 @@
 	<PropertyGroup>
 		<Name>ProphetsWay.Example.Database</Name>
 		<ProjectGuid>{828e118d-68ba-4f92-8794-46cbf85ac4c3}</ProjectGuid>
-		<DSP>Microsoft.Data.Tools.Schema.Sql.Sql160DatabaseSchemaProvider</DSP>
+		<DSP>Microsoft.Data.Tools.Schema.Sql.SqlAzureV12DatabaseSchemaProvider</DSP>
 		<RootNamespace>ProphetsWay.Example.Database</RootNamespace>
 		<AssemblyName>ProphetsWay.Example.Database</AssemblyName>
 		<ModelCollation>1033,CI</ModelCollation>
@@ -33,6 +33,10 @@
 		<SqlCmdVariable Include="DatabaseInstance">
 			<DefaultValue>ProphetsWay.Example</DefaultValue>
 			<Value>$(SqlCmdVar__1)</Value>
+		</SqlCmdVariable>
+		<SqlCmdVariable Include="CreateLegacyTestUser">
+			<DefaultValue>False</DefaultValue>
+			<Value>$(CreateLegacyTestUser)</Value>
 		</SqlCmdVariable>
 	</ItemGroup>
 
